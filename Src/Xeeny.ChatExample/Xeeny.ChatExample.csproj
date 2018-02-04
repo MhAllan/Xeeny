@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xeeny.Extensions.Loggers\Xeeny.Extensions.Loggers.csproj" />
+    <ProjectReference Include="..\Xeeny.Serialization.JsonSerializer\Xeeny.Serialization.JsonSerializer.csproj" />
+    <ProjectReference Include="..\Xeeny.Serialization.ProtobufSerializer\Xeeny.Serialization.ProtobufSerializer.csproj" />
+    <ProjectReference Include="..\Xeeny.Sockets\Xeeny.Sockets.csproj" />
+    <ProjectReference Include="..\Xeeny\Xeeny.csproj" />
+  </ItemGroup>
+
+</Project>

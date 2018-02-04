@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Mohamad Alallan</Authors>
+    <Company></Company>
+    <Description>Xeeny is framework for building and consuming services on devices and servers that support .net standard.
+It is Cross Platform, Duplex, Multiple Transports, Asynchronous, Typed Proxies, Configurable, and Extendable</Description>
+    <PackageLicenseUrl>https://github.com/MhAllan/Xeeny/blob/develop/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/MhAllan/Xeeny</PackageProjectUrl>
+    <PackageIconUrl>http://icons.iconarchive.com/icons/kyo-tux/delikate/64/Network-icon.png</PackageIconUrl>
+    <PackageTags>C# csharp .net standard dotnetstandard duplex services cross-platform multiple-transport tcp udp framework xamarin</PackageTags>
+    <PackageReleaseNotes>first release</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
+    <PackageReference Include="MsgPack.Cli" Version="0.9.2" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xeeny.Sockets\Xeeny.Sockets.csproj" />
+  </ItemGroup>
+
+</Project>
