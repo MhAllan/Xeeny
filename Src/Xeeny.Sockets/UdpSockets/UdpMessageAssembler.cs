@@ -9,7 +9,7 @@ namespace Xeeny.Sockets.UdpSockets
     /// <summary>
     /// This class is not thread safe
     /// </summary>
-    class UdpMessageAssembler
+    class UdpMessageAssembler : IDisposable
     {
         public readonly Guid MessageId;
 
@@ -17,6 +17,9 @@ namespace Xeeny.Sockets.UdpSockets
         {
             get
             {
+                if (_isDisposed)
+                    throw new Exception($"{nameof(UdpMessageAssembler)} is already disposed");
+
                 if (!IsCompleted)
                     return null;
 
@@ -37,12 +40,13 @@ namespace Xeeny.Sockets.UdpSockets
 
         public bool IsCompleted { get; private set; }
 
-        readonly byte[][] _fragments;
         readonly int _totalSize;
         readonly int _maxFragmentSize;
 
+        byte[][] _fragments;
         byte[] _result;
         int _currentSize;
+        bool _isDisposed;
 
         public UdpMessageAssembler(Guid msgId, int totalSize, int maxFragmentSize)
         {
@@ -70,16 +74,21 @@ namespace Xeeny.Sockets.UdpSockets
             if (fragment.Length > _maxFragmentSize)
                 throw new Exception($"Fragment size can not be more that {_maxFragmentSize}");
 
-            if (_fragments[index] != null)
-                return IsCompleted;
+            if (_fragments[index] == null)
+            {
+                _fragments[index] = fragment;
+                _currentSize += fragment.Length;
 
-            _fragments[index] = fragment;
-            _currentSize += fragment.Length;
-
-            IsCompleted = _currentSize == _totalSize;
+                IsCompleted = _currentSize == _totalSize;
+            }
 
             return IsCompleted;
         }
 
+        public void Dispose()
+        {
+            _fragments = null;
+            _isDisposed = true;
+        }
     }
 }

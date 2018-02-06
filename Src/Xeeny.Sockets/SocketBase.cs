@@ -23,7 +23,7 @@ namespace Xeeny.Sockets
                 if (_state != value)
                 {
                     _state = value;
-                    _logger.LogTrace($"State changed to {value}");
+                    Logger.LogTrace($"State changed to {value}");
                     OnStateChanged();
                 }
             }
@@ -38,7 +38,6 @@ namespace Xeeny.Sockets
         readonly MessageParser _parser;
         readonly ResponseManager _responseManager = new ResponseManager();
 
-        readonly Uri _uri;
         readonly int _timeout;
         readonly int _receiveTimeout;
         readonly int _keepAliveInterval;
@@ -48,9 +47,10 @@ namespace Xeeny.Sockets
         readonly int _receiveBufferSize;
 
         readonly string _id;
-        readonly string _connectionId;
 
-        readonly ILogger _logger;
+
+        public readonly string ConnectionId;
+        protected readonly ILogger Logger;
 
         public SocketBase(SocketSettings settings, ILogger logger)
         {
@@ -66,17 +66,12 @@ namespace Xeeny.Sockets
             _leftKeepAliveRetries = settings.KeepAliveRetries;
 
             _id = Guid.NewGuid().ToString();
-            _connectionId = $"ConnectionId: {_id}";
+            ConnectionId = $"ConnectionId: {_id}";
 
-            _logger = logger;
+            Logger = logger;
         }
 
-        public SocketBase(Uri uri, SocketSettings settings, ILogger logger) : this(settings, logger)
-        {
-            _uri = uri;
-        }
-
-        protected abstract Task OnConnect(Uri uri, CancellationToken ct);
+        protected abstract Task OnConnect(CancellationToken ct);
         protected abstract void OnClose(CancellationToken ct);
         protected abstract Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct);
         protected abstract Task<byte[]> Receive(ArraySegment<byte> receiveBuffer, MessageParser parser, CancellationToken ct);
@@ -94,14 +89,14 @@ namespace Xeeny.Sockets
                         using (var cts = new CancellationTokenSource(_timeout))
                         using (cts.Token.Register(Close))
                         {
-                            await OnConnect(_uri, CancellationToken.None);
+                            await OnConnect(CancellationToken.None);
                             State = ConnectionState.Connected;
                         }
                     }
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError(ex, $"Connection to {_uri.AbsoluteUri} failed");
+                    Logger.LogError(ex, $"Connection to failed");
                     Close();
                     throw;
                 }
@@ -146,7 +141,7 @@ namespace Xeeny.Sockets
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError(ex, "Graceful close failed");
+                    Logger.LogError(ex, "Graceful close failed");
                 }
                 finally
                 {
@@ -195,7 +190,7 @@ namespace Xeeny.Sockets
             }
             finally
             {
-                _logger.LogTrace($"KeepAliveRetries: {_leftKeepAliveRetries}");
+                Logger.LogTrace($"KeepAliveRetries: {_leftKeepAliveRetries}");
 
                 _isSending = false;
                 _lock.Release();
@@ -234,13 +229,13 @@ namespace Xeeny.Sockets
                     if (_isSending)
                         continue;
 
-                    _logger.LogTrace($"{_connectionId} pinging, left retries: {_leftKeepAliveRetries}");
+                    Logger.LogTrace($"{ConnectionId} pinging, left retries: {_leftKeepAliveRetries}");
                     await Send(pingMsg);
                 }
                 catch(Exception ex)
                 {
                     _leftKeepAliveRetries--;
-                    _logger.LogTrace($"{_connectionId} pinging failed, left retries: {_leftKeepAliveRetries}");
+                    Logger.LogTrace($"{ConnectionId} pinging failed, left retries: {_leftKeepAliveRetries}");
                     if (_leftKeepAliveRetries == 0)
                     {
                         Close(false);
@@ -258,7 +253,7 @@ namespace Xeeny.Sockets
                 var receiveSegment = new ArraySegment<byte>(receiveBuffer);
                 while (this.State == ConnectionState.Connected)
                 {
-                    _logger.LogTrace($"{_connectionId} receiving");
+                    Logger.LogTrace($"{ConnectionId} receiving");
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
                     using (var reg = cts.Token.Register(Close))
                     {
@@ -303,7 +298,7 @@ namespace Xeeny.Sockets
             }
             catch(Exception ex)
             {
-                _logger.LogError(ex, $"{_connectionId} stopped receiving");
+                Logger.LogError(ex, $"{ConnectionId} stopped receiving");
                 Close(true);
             }
             finally
@@ -405,17 +400,17 @@ namespace Xeeny.Sockets
 
         void LogStarted(Message msg)
         {
-            _logger.LogTrace("Started", _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogTrace("Started", ConnectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
         }
 
         void LogEnded(Message msg)
         {
-            _logger.LogTrace("Ended", _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogTrace("Ended", ConnectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
         }
 
         void LogError(Exception ex, Message msg, string message)
         {
-            _logger.LogError(ex, message, _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogError(ex, message, ConnectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
         }
 
 

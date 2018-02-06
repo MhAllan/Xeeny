@@ -13,6 +13,7 @@ namespace Xeeny.Sockets.WebSockets
     public class WebSocket : SocketBase
     {
         System.Net.WebSockets.WebSocket _webSocket;
+        Uri _uri;
 
         public WebSocket(System.Net.WebSockets.WebSocket socket, SocketSettings settings, ILoggerFactory loggerFactory)
             : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
@@ -22,9 +23,11 @@ namespace Xeeny.Sockets.WebSockets
         }
 
         public WebSocket(Uri uri, SocketSettings settings, ILoggerFactory loggerFactory)
-            : base(uri, settings, loggerFactory.CreateLogger(nameof(WebSocket)))
+            : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = new System.Net.WebSockets.ClientWebSocket();
+            _uri = uri;
+
             SetState();
         }
 
@@ -43,9 +46,9 @@ namespace Xeeny.Sockets.WebSockets
             }
         }
 
-        protected override Task OnConnect(Uri uri, CancellationToken ct)
+        protected override Task OnConnect(CancellationToken ct)
         {
-            return ((ClientWebSocket)_webSocket).ConnectAsync(uri, ct);
+            return ((ClientWebSocket)_webSocket).ConnectAsync(_uri, ct);
         }
 
         protected override async void OnClose(CancellationToken ct)
