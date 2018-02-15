@@ -39,10 +39,9 @@ namespace Xeeny.Api.Server
         {
             Validate();
 
-            var host = new ServiceHost<TService>(
-                Listeners, 
-                InstanceMode,
-                Serializer, CallbackType, LoggerFactory);
+            var host = SingletonInstance == null
+                ? new ServiceHost<TService>(Listeners, InstanceMode, Serializer, CallbackType, LoggerFactory)
+                : new ServiceHost<TService>(Listeners, SingletonInstance, Serializer, CallbackType, LoggerFactory);
 
             return host;
         }
