@@ -50,26 +50,29 @@ namespace Xeeny.Sockets.Messages
 
         public void ValidateSize(byte[] message, out int size)
         {
-            var span = new Span<byte>(message);
-            ValidateSize(span, out size);
+            size = BitConverter.ToInt32(message, 0);
+            ValidateSize(size);
         }
 
-        public void ValidateSize(Span<byte> message, out int size)
+        public void ValidateSize(ArraySegment<byte> message, out int size)
         {
-            size = BitConverter.ToInt32(message.Slice(0, _sizeLength).ToArray(), 0);
+            size = BitConverter.ToInt32(message.Array, message.Offset);
+            ValidateSize(size);
+        }
+
+        private void ValidateSize(int size)
+        {
             if (size > _maxMessageSize)
                 throw new Exception($"Received message is too big, receive {size}, while max is {_maxMessageSize}");
         }
 
         public Message GetMessage(byte[] message)
         {
-            var span = new Span<byte>(message);
+            if (message.Length == 0) return new Message();
 
-            if (span.IsEmpty) return new Message();
-
-            ValidateSize(message, out int size);
-
-            var messageType = (MessageType)span[_messageTypeIndex];
+            ValidateSize(message, out int _);
+            
+            var messageType = (MessageType)message[_messageTypeIndex];
 
             if (messageType == MessageType.Ping)
             {
@@ -81,14 +84,14 @@ namespace Xeeny.Sockets.Messages
                 return new Message { MessageType = MessageType.Close };
             }
 
-            var id = new Guid(span.Slice(_idIndex, _idLength).ToArray());
-            var isEncrypted = span[_isEncryptedIndex] == 1;
+            var id = new Guid(GetSubArray(message, _idIndex, _idLength));
+            var isEncrypted = message[_isEncryptedIndex] == 1;
 
-            var addressSize = BitConverter.ToInt32(span.Slice(_addressSizeIndex).ToArray(), 0);
-            var address = span.Slice(_addressIndex, addressSize).ToArray();
+            var addressSize = BitConverter.ToInt32(message, _addressSizeIndex);
+            var address = GetSubArray(message, _addressIndex, addressSize);
 
             var payloadIndex = _addressIndex + addressSize;
-            var payload = span.Slice(payloadIndex).ToArray();
+            var payload = GetSubArray(message, payloadIndex, message.Length - payloadIndex);
 
             return new Message
             {
@@ -162,6 +165,13 @@ namespace Xeeny.Sockets.Messages
             }
 
             return result;
+        }
+
+        byte[] GetSubArray(byte[] src, int offset, int count)
+        {
+            var dst = new byte[count];
+            Buffer.BlockCopy(src, offset, dst, 0, count);
+            return dst;
         }
 
         void CopyArray(byte[] src, byte[] dest)

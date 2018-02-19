@@ -37,10 +37,9 @@ namespace Xeeny.Server
         readonly Type _callbackType;
         readonly ILogger _logger;
 
-        internal ServiceHost(IList<IListener> listeners, InstanceMode instanceMode, ISerializer serializer,
+        private ServiceHost(IList<IListener> listeners, ISerializer serializer,
             Type callbackType, ILoggerFactory loggerFactory)
         {
-
             TypeDescription<TService>.ValidateAsService(callbackType);
 
             _listeners = new ReadOnlyCollection<IListener>(listeners);
@@ -48,8 +47,22 @@ namespace Xeeny.Server
             _msgBuilder = new MessageBuilder(_serializer);
             _callbackType = callbackType;
             _logger = loggerFactory.CreateLogger("ServiceHost");
+        }
 
+        internal ServiceHost(IList<IListener> listeners, InstanceMode instanceMode, ISerializer serializer,
+            Type callbackType, ILoggerFactory loggerFactory)
+            :this(listeners, serializer, callbackType, loggerFactory)
+        {
             _instanceContextFactory = new InstanceContextFactory<TService>(instanceMode, _msgBuilder, loggerFactory);
+            _instanceContextFactory.InstanceCreated += OnInstanceFactoryInstanceCreate;
+            _instanceContextFactory.SessionInstanceRemoved += OnInstanceFactorySessionInstanceRemoved;
+        }
+
+        internal ServiceHost(IList<IListener> listeners, TService singleton, ISerializer serializer,
+            Type callbackType, ILoggerFactory loggerFactory)
+            : this(listeners, serializer, callbackType, loggerFactory)
+        {
+            _instanceContextFactory = new InstanceContextFactory<TService>(singleton, _msgBuilder, loggerFactory);
             _instanceContextFactory.InstanceCreated += OnInstanceFactoryInstanceCreate;
             _instanceContextFactory.SessionInstanceRemoved += OnInstanceFactorySessionInstanceRemoved;
         }
