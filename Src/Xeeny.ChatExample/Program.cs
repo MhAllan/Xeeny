@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Xeeny.Api.Client;
+﻿using Xeeny.Api.Client;
 using Xeeny.Api.Server;
 using Xeeny.Connections;
 using Xeeny.Dispatching;
@@ -41,7 +40,6 @@ namespace Xeeny.ChatExample
                 var client1 = await new DuplexConnectionBuilder<IChatService, Callback>(callback1)
                                     .WithTcpTransport(address, options =>
                                     {
-                                        //usually should be around half server ReceiveTimeout
                                         options.KeepAliveInterval = TimeSpan.FromSeconds(5);
                                     })
                                     .WithConsoleLogger()
@@ -50,7 +48,6 @@ namespace Xeeny.ChatExample
                 var client2 = await new DuplexConnectionBuilder<IChatService, Callback>(callback2)
                                     .WithTcpTransport(address, options =>
                                     {
-                                        //usually should be around half server ReceiveTimeout
                                         options.KeepAliveInterval = TimeSpan.FromSeconds(5);
                                     })
                                     .WithConsoleLogger()
@@ -85,6 +82,7 @@ namespace Xeeny.ChatExample
                 await client3.PrivateTo(name1, $"This is from {name3} to {name1} Only");
 
                 await Task.Delay(1000);
+
                 Console.WriteLine("client3 will close");
                 //client3 leaves
                 ((IConnection)client3).Close();
@@ -97,6 +95,9 @@ namespace Xeeny.ChatExample
                 //so it will timeout from server side
                 client3 = await builder3.CreateConnection();
                 client3.Join(name3);
+
+                Console.WriteLine("client3 joined again");
+                await Task.Delay(1000);
 
                 await client3.WhoIsOnline();
 

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Xeeny.ConsoleTest
 {
@@ -16,8 +17,8 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                await Profile(SocketType.TCP);
-                //await EndToEndTest();
+                //await Profile(SocketType.TCP);
+                await EndToEndTest();
             }
             catch(Exception ex)
             {
@@ -117,10 +118,10 @@ namespace Xeeny.ConsoleTest
                             //add tcp server
                             .AddTcpServer(tcpAddress, options =>
                             {
-                                options.ReceiveBufferSize = 1024;
+                                options.ReceiveBufferSize = 125;
                             })
                             .WithMessagePackSerializer() //it is the default
-                            .WithConsoleLogger() //default is empty
+                            .WithConsoleLogger(LogLevel.Trace) //default is empty
                             .CreateHost();
 
             host.ServiceInstanceCreated += service =>
@@ -137,7 +138,8 @@ namespace Xeeny.ConsoleTest
                             .WithWebSocketTransport(httpAddress, options =>
                             {
                                 //set connection options
-                                options.ReceiveBufferSize = 1024;
+                                options.SendBufferSize = 125;
+                                options.KeepAliveInterval = TimeSpan.FromMinutes(10);
                             })
                             .WithMessagePackSerializer()
                             .WithConsoleLogger();
@@ -145,11 +147,19 @@ namespace Xeeny.ConsoleTest
             clientBuilder1.CallbackInstanceCreated += obj =>
             {
                 Console.WriteLine($"Created callback of type {obj.GetType()}");
-                var callback = (MyCallback)obj;
+                var callback = obj;
                 //config the callback instance
             };
 
             var client1 = await clientBuilder1.CreateConnection();
+
+            var cc = new string('*', 1000);
+            var resp = await client1.Echo(cc);
+            Console.WriteLine(resp.Length);
+            Console.WriteLine(resp);
+
+            return;
+
             var client2 = await clientBuilder1.CreateConnection();
 
             var msg = await client1.Echo("From Client 1");

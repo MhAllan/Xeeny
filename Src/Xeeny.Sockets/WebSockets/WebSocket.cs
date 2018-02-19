@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Xeeny.Sockets.Messages;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -65,44 +64,42 @@ namespace Xeeny.Sockets.WebSockets
             catch { }
         }
 
-        protected override async Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct)
+        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
         {
-            foreach (var segment in segments)
-            {
-                await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, ct)
-                                .ConfigureAwait(false);
-            }
+            await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, ct)
+                               .ConfigureAwait(false);
         }
         
-        protected override async Task<byte[]> Receive(ArraySegment<byte> receiveBuffer, MessageParser parser,
-            CancellationToken ct)
+        protected override async Task Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
         {
-            using (var ms = new MemoryStream())
-            {
-                bool accepted = false;
-
-                WebSocketReceiveResult result;
-                int msgSize = 0;
-                int received = 0;
-                do
-                {
-                    result = await _webSocket.ReceiveAsync(receiveBuffer, ct)
+            await _webSocket.ReceiveAsync(receiveBuffer, ct)
                                              .ConfigureAwait(false);
+            //using (var ms = new MemoryStream())
+            //{
+            //    bool accepted = false;
 
-                    if (!accepted)
-                    {
-                        parser.ValidateSize(receiveBuffer, out msgSize);
-                        accepted = true;
-                    }
+            //    WebSocketReceiveResult result;
+            //    int msgSize = 0;
+            //    int received = 0;
+            //    do
+            //    {
+            //        result = await _webSocket.ReceiveAsync(receiveBuffer, ct)
+            //                                 .ConfigureAwait(false);
 
-                    await ms.WriteAsync(receiveBuffer.Array, 0, result.Count);
+            //        if (!accepted)
+            //        {
+            //            parser.ValidateSize(receiveBuffer, out msgSize);
+            //            accepted = true;
+            //        }
 
-                    received += result.Count;
-                }
-                while (received < msgSize);
+            //        await ms.WriteAsync(receiveBuffer.Array, 0, result.Count);
 
-                return ms.ToArray();
-            }
+            //        received += result.Count;
+            //    }
+            //    while (received < msgSize);
+
+            //    return ms.ToArray();
+            //}
         }
     }
 }

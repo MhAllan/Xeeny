@@ -1,7 +1,7 @@
-﻿using Xeeny.Sockets.Messages;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Messaging
 {
@@ -12,8 +12,8 @@ namespace Xeeny.Messaging
         Message CreateResponse(Guid id, object response);
         Message CreateError(Guid id, string error);
 
-        string UnpackAddress(Message message);
-        object[] UnpackParameters(Message message, Type[] parameterTypes);
+        string UnpackAddress(Message message, out ArraySegment<byte> parameters);
+        object[] UnpackParameters(ArraySegment<byte> parameters, Type[] parameterTypes);
 
         TResp UnpackResponse<TResp>(byte[] payload);
     }

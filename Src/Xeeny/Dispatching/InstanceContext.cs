@@ -5,10 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using Xeeny.Descriptions;
-using Xeeny.Sockets.Messages;
 using Xeeny.Messaging;
 using Xeeny.Connections;
 using Microsoft.Extensions.Logging;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Dispatching
 {
@@ -29,19 +29,21 @@ namespace Xeeny.Dispatching
             _logger = loggerFactory.CreateLogger("InstanceContext");
         }
 
-        public async Task<Message?> HandleRequest(Message message, ServerConnection serverProxy)
+        public async Task<RequestHandleResult> HandleRequest(Message message, ServerConnection serverProxy)
         {
             try
             {
-                var operation = _msgBuilder.UnpackAddress(message);
+                var operation = _msgBuilder.UnpackAddress(message, out ArraySegment<byte> parametersSpan);
                 var operationContext = CreateOperationContext(serverProxy, operation);
-                var parameters = _msgBuilder.UnpackParameters(message, operationContext.OperationDescription.ParameterTypes);
+                var desc = operationContext.OperationDescription;
 
+                var parameters = _msgBuilder.UnpackParameters(parametersSpan, desc.ParameterTypes);
                 var result = await operationContext.Execute(_service, parameters);
 
-                if (!operationContext.OperationDescription.IsOneWay)
+                if (!desc.IsOneWay)
                 {
-                    return _msgBuilder.CreateResponse(message.Id, result);
+                    var response = _msgBuilder.CreateResponse(message.Id, result);
+                    return new RequestHandleResult(response, true);
                 }
             }
             catch(Exception ex)
@@ -50,11 +52,12 @@ namespace Xeeny.Dispatching
 
                 if (message.MessageType != MessageType.OneWayRequest)
                 {
-                    return _msgBuilder.CreateResponse(message.Id, ex.Message);
+                    var error = _msgBuilder.CreateResponse(message.Id, ex.Message);
+                    return new RequestHandleResult(error, true);
                 }
             }
 
-            return null;
+            return new RequestHandleResult(default, false);
         }
 
         public OperationContext CreateOperationContext(ServerConnection serverProxy, string operation)

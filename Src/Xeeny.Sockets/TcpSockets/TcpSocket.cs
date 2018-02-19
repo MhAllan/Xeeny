@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Xeeny.Sockets.Messages;
 
 namespace Xeeny.Sockets.TcpSockets
 {
@@ -28,24 +25,20 @@ namespace Xeeny.Sockets.TcpSockets
         public TcpSocket(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory) 
             : base(settings, loggerFactory.CreateLogger(nameof(TcpSocket)))
         {
-            var ip = SocketTools.GetIP(uri, settings.IPVersion);
-            var family = ip.AddressFamily;
-            var client = new TcpClient(family);
-
-            _remoteIP = ip;
+            _remoteIP = SocketTools.GetIP(uri, settings.IPVersion);
             _remotePort = uri.Port;
-            _isClient = true;
-
-            _socket = client.Client;
-            _socket.SendBufferSize = settings.SendBufferSize;
-            _socket.ReceiveBufferSize = settings.ReceiveBufferSize;
-
-            _socket.NoDelay = true;
-
+            var family = _remoteIP.AddressFamily;
+            _socket = new Socket(family, System.Net.Sockets.SocketType.Stream, ProtocolType.Tcp);
             if (family == AddressFamily.InterNetworkV6)
             {
                 _socket.DualMode = true;
             }
+            _isClient = true;
+
+            _socket.SendBufferSize = settings.SendBufferSize;
+            _socket.ReceiveBufferSize = settings.ReceiveBufferSize;
+
+            _socket.NoDelay = true;
 
             SetState();
         }
@@ -66,40 +59,49 @@ namespace Xeeny.Sockets.TcpSockets
             await _socket.ConnectAsync(_remoteIP, _remotePort);
         }
 
-        protected override async Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct)
+        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
         {
-            foreach (var segment in segments)
-            {
-                await _socket.SendAsync(segment, SocketFlags.None)
-                             .ConfigureAwait(false);
-            }
+            await _socket.SendAsync(segment, SocketFlags.None)
+                            .ConfigureAwait(false);
         }
 
-        protected override async Task<byte[]> Receive(ArraySegment<byte> receiveBuffer, MessageParser parser, 
-            CancellationToken ct)
+        //protected override async Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct)
+        //{
+        //    foreach (var segment in segments)
+        //    {
+               
+        //    }
+        //}
+
+        protected override async Task Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
         {
-            using (var ms = new MemoryStream())
-            {
-                bool accepted = false;
-                int msgSize = 0;
-                int received = 0;
-                do
-                {
-                    var size = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
-                                            .ConfigureAwait(false);
-                    if (!accepted)
-                    {
-                        parser.ValidateSize(receiveBuffer, out msgSize);
-                        accepted = true;
-                    }
-                    await ms.WriteAsync(receiveBuffer.Array, 0, size);
+            var size = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
+                                           .ConfigureAwait(false);
 
-                    received += size;
-                }
-                while (received < msgSize);
+            //return new Span<byte>(receiveBuffer.Array, receiveBuffer.Offset, size).ToArray();
 
-                return ms.ToArray();
-            }
+            //using (var ms = new MemoryStream())
+            //{
+            //    bool accepted = false;
+            //    int msgSize = 0;
+            //    int received = 0;
+            //    do
+            //    {
+            //        var size = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
+            //                                .ConfigureAwait(false);
+            //        if (!accepted)
+            //        {
+            //            formatter.ValidateSize(receiveBuffer, out msgSize);
+            //            accepted = true;
+            //        }
+            //        await ms.WriteAsync(receiveBuffer.Array, 0, size);
+
+            //        received += size;
+            //    }
+            //    while (received < msgSize);
+
+            //    return ms.ToArray();
+            //}
         }
 
         protected override void OnClose(CancellationToken ct)
@@ -110,7 +112,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"{ConnectionId} Failed to shutdown", ex.Message);
+                Logger.LogTrace($"Connection {Id} Failed to shutdown", ex.Message);
             }
             try
             {
@@ -118,7 +120,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"{ConnectionId} Failed to disconnect", ex.Message);
+                Logger.LogTrace($"Connection {Id} Failed to disconnect", ex.Message);
             }
             try
             {
@@ -126,7 +128,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"{ConnectionId} Failed to close", ex.Message);
+                Logger.LogTrace($"Connection {Id} Failed to close", ex.Message);
             }
         }
     }

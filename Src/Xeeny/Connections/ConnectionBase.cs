@@ -2,9 +2,9 @@
 using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
-using Xeeny.Sockets.Messages;
 using Xeeny.Messaging;
 using Xeeny.Sockets;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Connections
 {
@@ -26,7 +26,7 @@ namespace Xeeny.Connections
             Socket.RequestReceived += OnRequestReceived;
         }
 
-        protected virtual void OnRequestReceived(ISocket arg1, Message arg2)
+        protected virtual void OnRequestReceived(ISocket socket, Message message)
         {
             //Nothing, Implement in subclasses
         }
