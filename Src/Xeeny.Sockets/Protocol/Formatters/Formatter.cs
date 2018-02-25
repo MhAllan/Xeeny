@@ -12,7 +12,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
     //[messageType](byte) [total-size](int) [id](guid) [fragment-id](int) [payload]
     class Formatter : IFormatter
     {
-        public int MinMessageSize => Message.MinMessageSize;
+        public int MinMessageSize => FragmentReaderWriter.MinMessageSize;
         public int MaxMessageSize => _maxMessageSize;
 
         readonly int _maxMessageSize;
@@ -79,24 +79,27 @@ namespace Xeeny.Sockets.Protocol.Formatters
             var count = segment.Count;
             ValidateBufferLength(count - offset);
 
-            var message = Message.ReadFragment(buffer, offset, count);
+            var fragment = FragmentReaderWriter.ReadFragment(buffer, count);
+            var message = fragment.PartialMessage;
+            var totalSize = fragment.TotalSize;
 
-            if (message.FragmentId < 0)
+            if (fragment.TotalSize <= _remoteFragmentSize)
             {
                 return new ReadResult(message, true);
             }
 
+            var messageType = message.MessageType;
             var messageId = message.Id;
+            var payload = message.Payload;
+
+            var fragmentId = fragment.FragmentId;
 
             if (!_fragmentCollections.TryGetValue(messageId, out FragmentCollection fc))
             {
-                fc = new FragmentCollection(message.MessageType, messageId, _waitFragmentsTimeout);
+                fc = new FragmentCollection(messageType, messageId, totalSize, _waitFragmentsTimeout);
 
                 _fragmentCollections.TryAdd(messageId, fc);
             }
-
-            var fragmentId = message.FragmentId;
-            var payload = message.Payload;
 
             fc.AddPayloadFragment(fragmentId, payload);
 
@@ -155,8 +158,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
                 while(true)
                 {
                     var take = Math.Min(partialPayloadSize, totalSize - index);
-                    //array segment
-                    var partialPayload = new Span<byte>(buffer, index, take).ToArray();
+                    var partialPayload = ArrayHelper.GetSubArray(buffer, index, take);
 
                     ArrayHelper.Copy(header, buffer);
                     Message.WriteBody(fragmentType, fragmentId, partialPayload, buffer);

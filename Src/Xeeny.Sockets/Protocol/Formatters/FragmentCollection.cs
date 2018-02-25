@@ -16,21 +16,17 @@ namespace Xeeny.Sockets.Protocol.Formatters
         readonly MessageType _messageType;
         readonly Guid _messageId;
         readonly int _totalSize;
-        readonly int _fragmentsCount;
         readonly byte[][] _fragments;
         readonly DateTime _expirationDate;
 
         int _currentFragmentsCount;
 
-        public FragmentCollection(MessageType messageType, Guid messageId, int totalSize,
-            int fragmentsCount, TimeSpan timeout)
+        public FragmentCollection(MessageType messageType, Guid messageId, int totalSize, TimeSpan timeout)
         {
             _messageType = messageType;
             _messageId = messageId;
             _totalSize = totalSize;
-            _fragmentsCount = fragmentsCount;
 
-            _fragments = new byte[_fragmentsCount][];
             _currentFragmentsCount = 0;
             _expirationDate = DateTime.UtcNow.Add(timeout);
 
