@@ -42,7 +42,7 @@ namespace Xeeny.Sockets
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
-        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, Formatter.ProtocolMinMessageSize);
+        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, FragmentFormatter.ProtocolMinMessageSize);
         readonly int _maxMessageSize;
         readonly int _sendBufferSize;
         readonly int _receiveBufferSize;
@@ -54,7 +54,7 @@ namespace Xeeny.Sockets
         AgreementMessage? _localAgreement;
         AgreementMessage? _remoteAgreement;
 
-        Formatter _formatter;
+        FragmentFormatter _formatter;
 
         public SocketBase(SocketSettings settings, ILogger logger)
         {
@@ -171,7 +171,7 @@ namespace Xeeny.Sockets
                 throw new Exception($"Remote send buffer is larger than local receive buffer");
             }
 
-            _formatter = new Formatter(_maxMessageSize, ra.FragmentSize, TimeSpan.FromMilliseconds(ra.Timeout));
+            _formatter = new FragmentFormatter(_maxMessageSize, ra.FragmentSize, TimeSpan.FromMilliseconds(ra.Timeout));
         }
 
         public async void Listen()

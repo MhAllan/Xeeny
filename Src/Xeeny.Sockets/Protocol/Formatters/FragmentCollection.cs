@@ -44,7 +44,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
                 throw new Exception($"Incomplete, collected {_currentFragmentsCount} out of {_fragmentsCount} fragments");
             }
 
-            var payloadSize = _totalSize - Formatter.ProtocolMinMessageSize;
+            var payloadSize = _totalSize - FragmentFormatter.ProtocolMinMessageSize;
             var buffer = new byte[payloadSize];
 
             var index = 0;

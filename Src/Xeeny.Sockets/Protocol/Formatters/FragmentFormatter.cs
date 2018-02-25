@@ -9,7 +9,7 @@ using Xeeny.Sockets.Protocol.Results;
 
 namespace Xeeny.Sockets.Protocol.Formatters
 {
-    class Formatter : IFormatter
+    class FragmentFormatter : IFormatter
     {
         const byte _messageTypeIndex = 0; //1 byte enum
         const byte _idIndex = 1; //16 bytes guid
@@ -31,7 +31,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
         ConcurrentDictionary<Guid, FragmentCollection> _fragmentCollections =
             new ConcurrentDictionary<Guid, FragmentCollection>();
 
-        public Formatter(int maxMessageSize, int remoteFragmentSize, TimeSpan waitFragmentsTimeout)
+        public FragmentFormatter(int maxMessageSize, int remoteFragmentSize, TimeSpan waitFragmentsTimeout)
         {
             if (maxMessageSize < MinMessageSize)
             {
