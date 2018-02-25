@@ -159,7 +159,7 @@ var host = new ServiceHostBuilder<Service>(InstanceMode.Single)
                 .WithCallback<ICallback>()
                 .AddTcpServer(address)
                 .CreateHost();
-host.Open();
+await host.Open();
 ```
 * *For Duplex connections you will usually have your services PerConnection or Singleton* *
 
@@ -198,7 +198,7 @@ You define the service instance mode using the `InstanceMode` enum when creating
 var host = new ServiceHostBuilder<Service>(InstanceMode.PerCall)
 		...
 		.CreateHost();
-host.Open();
+await host.Open();
 ```
 ### Callback Instance Lifetime
 When you create duplex connection you pass the callback type and InstanceMode to the `DuplexConnectionBuilder`. The `InstanceMode` acts the same way it does for the service when creating ServiceHost
