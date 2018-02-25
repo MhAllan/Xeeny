@@ -1,19 +1,21 @@
 ﻿using Microsoft.Extensions.Logging;
-using Xeeny.Sockets.Messages;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Xeeny.Sockets.Protocol.Formatters;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Sockets
 {
     public abstract class SocketBase : ISocket
     {
+        public string Id => _id;
         public event Action<ISocket, Message> RequestReceived;
-
         public event Action<IConnectionObject> StateChanged;
+
         ConnectionState _state;
         public ConnectionState State
         {
@@ -23,63 +25,80 @@ namespace Xeeny.Sockets
                 if (_state != value)
                 {
                     _state = value;
-                    _logger.LogTrace($"State changed to {value}");
+                    Logger.LogTrace($"{_id} State changed to {value}");
                     OnStateChanged();
                 }
             }
         }
 
-        public string Id => _id;
-
         readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
         byte _leftKeepAliveRetries = 0;
         bool _isSending = false;
 
-        readonly MessageParser _parser;
         readonly ResponseManager _responseManager = new ResponseManager();
 
-        readonly Uri _uri;
         readonly int _timeout;
         readonly int _receiveTimeout;
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
+        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, FragmentFormatter.ProtocolMinMessageSize);
+        readonly int _maxMessageSize;
         readonly int _sendBufferSize;
         readonly int _receiveBufferSize;
 
         readonly string _id;
-        readonly string _connectionId;
 
-        readonly ILogger _logger;
+        protected readonly ILogger Logger;
+
+        AgreementMessage? _localAgreement;
+        AgreementMessage? _remoteAgreement;
+
+        FragmentFormatter _formatter;
 
         public SocketBase(SocketSettings settings, ILogger logger)
         {
+            var sendBufferSize = settings.SendBufferSize;
+            var receiveBufferSize = settings.ReceiveBufferSize;
+            var maxMessageSize = settings.MaxMessageSize;
+
+            if(maxMessageSize < _minMessageSize)
+            {
+                throw new Exception($"{nameof(settings.MaxMessageSize)} can not be less than {_minMessageSize}");
+            }
+
+            if (sendBufferSize < _minMessageSize || sendBufferSize > maxMessageSize)
+            {
+                throw new Exception($"{nameof(settings.SendBufferSize)} must be between " +
+                    $"[{_minMessageSize}, {maxMessageSize}]");
+            }
+
+            if (receiveBufferSize < _minMessageSize || receiveBufferSize > maxMessageSize)
+            {
+                throw new Exception($"{nameof(settings.SendBufferSize)} must be between " +
+                    $"[{_minMessageSize}, {maxMessageSize}]");
+            }
+
+            _maxMessageSize = maxMessageSize;
+            _sendBufferSize = sendBufferSize;
+            _receiveBufferSize = receiveBufferSize;
+
             _timeout = settings.Timeout.TotalMilliseconds;
             _receiveTimeout = settings.ReceiveTimeout.TotalMilliseconds;
             _keepAliveInterval = settings.KeepAliveInterval.TotalMilliseconds;
             _keepAliveRetries = settings.KeepAliveRetries;
 
-            _sendBufferSize = settings.SendBufferSize;
-            _receiveBufferSize = settings.ReceiveBufferSize;
-
-            _parser = new MessageParser(settings.MaxMessageSize);
             _leftKeepAliveRetries = settings.KeepAliveRetries;
 
             _id = Guid.NewGuid().ToString();
-            _connectionId = $"ConnectionId: {_id}";
 
-            _logger = logger;
+            Logger = logger;
         }
 
-        public SocketBase(Uri uri, SocketSettings settings, ILogger logger) : this(settings, logger)
-        {
-            _uri = uri;
-        }
-
-        protected abstract Task OnConnect(Uri uri, CancellationToken ct);
+        protected abstract Task OnConnect(CancellationToken ct);
         protected abstract void OnClose(CancellationToken ct);
-        protected abstract Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct);
-        protected abstract Task<byte[]> Receive(ArraySegment<byte> receiveBuffer, MessageParser parser, CancellationToken ct);
+        protected abstract Task Send(ArraySegment<byte> segment, CancellationToken ct);
+        protected abstract Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct);
 
         public async Task Connect()
         {
@@ -94,14 +113,16 @@ namespace Xeeny.Sockets
                         using (var cts = new CancellationTokenSource(_timeout))
                         using (cts.Token.Register(Close))
                         {
-                            await OnConnect(_uri, CancellationToken.None);
+                            var ct = cts.Token;
+                            await OnConnect(ct);
+                            await ExchangeAgreement();
                             State = ConnectionState.Connected;
                         }
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Connection to {_uri.AbsoluteUri} failed");
+                    Logger.LogError(ex, $"Connection to failed");
                     Close();
                     throw;
                 }
@@ -109,6 +130,220 @@ namespace Xeeny.Sockets
                 {
                     _lock.Release();
                 }
+            }
+        }
+
+        async Task ExchangeAgreement()
+        {
+            if(_localAgreement == null)
+            {
+                using (var cts = new CancellationTokenSource(_timeout))
+                {
+                    var buffer = ArrayPool<byte>.Shared.Rent(AgreementMessage.MessageFixedSize);
+                    try
+                    {
+                        var localAgreement = new AgreementMessage(_sendBufferSize, _timeout);
+                        AgreementMessage.Write(localAgreement, buffer);
+                        var segment = new ArraySegment<byte>(buffer);
+                        await Send(segment, cts.Token);
+
+                        if(_remoteAgreement == null)
+                        {
+                            segment = new ArraySegment<byte>(buffer);
+                            await Receive(segment, cts.Token);
+                            var remoteAgreement = AgreementMessage.ReadMessage(segment.Array);
+
+                            _remoteAgreement = remoteAgreement;
+                        }
+
+                        _localAgreement = localAgreement;
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(buffer);
+                    }
+                }
+            }
+
+            var ra = _remoteAgreement.Value;
+            if(ra.FragmentSize > _receiveBufferSize)
+            {
+                throw new Exception($"Remote send buffer is larger than local receive buffer");
+            }
+
+            _formatter = new FragmentFormatter(_maxMessageSize, ra.FragmentSize, TimeSpan.FromMilliseconds(ra.Timeout));
+        }
+
+        public async void Listen()
+        {
+            var receiveBuffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
+            try
+            {
+                var _receiveSegment = new ArraySegment<byte>(receiveBuffer);
+
+                while (this.State == ConnectionState.Connected)
+                {
+                    Logger.LogTrace($"Connection {_id}: receiving");
+
+                    using (var cts = new CancellationTokenSource(_receiveTimeout))
+                    using (var reg = cts.Token.Register(Close))
+                    {
+                        var count = await Receive(_receiveSegment, cts.Token);
+
+                        var messageType = (MessageType)_receiveSegment.Array[0];
+
+                        switch (messageType)
+                        {
+                            case MessageType.Ping: break;
+
+                            case MessageType.Close:
+                                {
+                                    Close(false); break;
+                                }
+                            case MessageType.Agreement:
+                                {
+                                    _remoteAgreement = AgreementMessage.ReadMessage(receiveBuffer);
+                                    await ExchangeAgreement();
+                                    break;
+                                }
+                            case MessageType.OneWayRequest:
+                            case MessageType.Request:
+                                {
+                                    var result = _formatter.ReadMessage(receiveBuffer, count);
+                                    if (result.IsComplete)
+                                    {
+                                        OnRequestReceived(result.Message);
+                                    }
+                                    break;
+                                }
+                            case MessageType.Response:
+                            case MessageType.Error:
+                                {
+                                    var result = _formatter.ReadMessage(receiveBuffer, count);
+                                    if (result.IsComplete)
+                                    {
+                                        var msg = result.Message;
+                                        _responseManager.SetResponse(msg.Id, msg);
+                                    }
+                                    break;
+                                }
+                            default: throw new NotSupportedException(messageType.ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"{_id} stopped receiving");
+                Close(true);
+            }
+            finally
+            {
+                _formatter?.Dispose();
+                ArrayPool<byte>.Shared.Return(receiveBuffer);
+            }
+        }
+
+        public async void StartPing()
+        {
+            var pingMsg = PingMessage.Bytes;
+            while (this.State == ConnectionState.Connected)
+            {
+                try
+                {
+                    await Task.Delay(_keepAliveInterval);
+
+                    if (_isSending)
+                        continue;
+
+                    Logger.LogTrace($"Connection {_id} pinging, left retries: {_leftKeepAliveRetries}");
+                    await SendSegment(pingMsg);
+                }
+                catch (Exception ex)
+                {
+                    _leftKeepAliveRetries--;
+                    Logger.LogTrace($"Connection {_id} pinging failed, left retries: {_leftKeepAliveRetries}");
+                    if (_leftKeepAliveRetries == 0)
+                    {
+                        Close(false);
+                    }
+                }
+            }
+        }
+
+        public async Task SendOneWay(Message message)
+        {
+            LogStarted(message);
+
+            if (message.MessageType != MessageType.OneWayRequest)
+            {
+                throw new Exception($"Invalid message wrapping");
+            }
+
+            await SendMessage(message);
+
+            LogEnded(message);
+        }
+
+        public async Task SendResponse(Message message)
+        {
+            LogStarted(message);
+
+            if (message.MessageType != MessageType.Response)
+            {
+                throw new Exception($"Invalid message wrapping");
+            }
+
+            await SendMessage(message);
+
+            LogEnded(message);
+        }
+
+        public async Task SendError(Message message)
+        {
+            LogStarted(message);
+
+            if (message.MessageType != MessageType.Error)
+            {
+                throw new Exception($"Invalid message wrapping");
+            }
+
+            await SendMessage(message);
+
+            LogEnded(message);
+        }
+
+        public async Task<Message> SendRequest(Message message)
+        {
+            LogStarted(message);
+
+            if (message.MessageType != MessageType.Request)
+            {
+                throw new Exception($"Message Id of message type {message.MessageType} can not be empty");
+            }
+
+            var context = _responseManager.CreateReponseContext(message.Id, _timeout);
+            try
+            {
+                await SendMessage(message);
+
+                //accept this not async as the server is always one way and never calls SendRequest
+                //best async was with CancellationToken and TaskCompletionSource
+                //AutoResetEvent performed better than async
+                var response = context.GetResponse();
+
+                LogEnded(message);
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, message, "Failed to send and get response");
+                throw;
+            }
+            finally
+            {
+                _responseManager.RemoveResponseContext(context);
             }
         }
 
@@ -134,9 +369,8 @@ namespace Xeeny.Sockets
                                 using (var cts = new CancellationTokenSource(_timeout))
                                 using (cts.Token.Register(Close))
                                 {
-                                    var closeMsg = _parser.GetCloseBytes();
-                                    var closeSegments = GetSegments(closeMsg);
-                                    await Send(closeSegments, cts.Token);
+                                    var closeMsg = CloseMessage.Bytes;
+                                    await Send(closeMsg, cts.Token);
                                 }
                             }
                             catch { }
@@ -146,7 +380,7 @@ namespace Xeeny.Sockets
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError(ex, "Graceful close failed");
+                    Logger.LogError(ex, "Graceful close failed");
                 }
                 finally
                 {
@@ -174,7 +408,24 @@ namespace Xeeny.Sockets
             return State < ConnectionState.Closing;
         }
 
-        public virtual async Task Send(byte[] bytes)
+        async Task SendMessage(Message msg)
+        {
+            var sendBuffer = ArrayPool<byte>.Shared.Rent(_sendBufferSize);
+            try
+            {
+                var writeResult = _formatter.WriteMessage(msg, sendBuffer, _sendBufferSize);
+                while(writeResult.HasMessages)
+                {
+                    await SendSegment(writeResult.Message);
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(sendBuffer);
+            }
+        }
+
+        async Task SendSegment(ArraySegment<byte> segment)
         {
             await _lock.WaitAsync();
             try
@@ -183,132 +434,13 @@ namespace Xeeny.Sockets
                 using (cts.Token.Register(Close))
                 {
                     _isSending = true;
-                    var segments = GetSegments(bytes);
-                    await Send(segments, cts.Token);
-                    _leftKeepAliveRetries = _keepAliveRetries;
+                    await Send(segment, cts.Token);
                 }
-            }
-            catch(Exception ex)
-            {
-                _leftKeepAliveRetries--;
-                throw;
             }
             finally
             {
-                _logger.LogTrace($"KeepAliveRetries: {_leftKeepAliveRetries}");
-
                 _isSending = false;
                 _lock.Release();
-            }
-        }
-
-        IEnumerable<ArraySegment<byte>> GetSegments(byte[] msg)
-        {
-            var length = msg.Length;
-            if (length <= _sendBufferSize)
-            {
-                yield return new ArraySegment<byte>(msg);
-            }
-            else
-            {
-                var batches = (int)Math.Ceiling((double)length / _sendBufferSize);
-                var index = 0;
-                for (int i = 0; i < batches; i++)
-                {
-                    var take = i == batches - 1 ? length - index : _sendBufferSize;
-                    yield return new ArraySegment<byte>(msg, index, take);
-                    index += take;
-                }
-            }
-        }
-
-        public async void StartPing()
-        {
-            var pingMsg = _parser.GetPingBytes();
-            while (this.State == ConnectionState.Connected)
-            {
-                try
-                {
-                    await Task.Delay(_keepAliveInterval);
-
-                    if (_isSending)
-                        continue;
-
-                    _logger.LogTrace($"{_connectionId} pinging, left retries: {_leftKeepAliveRetries}");
-                    await Send(pingMsg);
-                }
-                catch(Exception ex)
-                {
-                    _leftKeepAliveRetries--;
-                    _logger.LogTrace($"{_connectionId} pinging failed, left retries: {_leftKeepAliveRetries}");
-                    if (_leftKeepAliveRetries == 0)
-                    {
-                        Close(false);
-                    }
-                }
-            }
-        }
-
-        public async void Listen()
-        {
-            var receiveBuffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
-
-            try
-            {
-                var receiveSegment = new ArraySegment<byte>(receiveBuffer);
-                while (this.State == ConnectionState.Connected)
-                {
-                    _logger.LogTrace($"{_connectionId} receiving");
-                    using (var cts = new CancellationTokenSource(_receiveTimeout))
-                    using (var reg = cts.Token.Register(Close))
-                    {
-                        var bytes = await Receive(receiveSegment, _parser, cts.Token);
-
-                        var msg = _parser.GetMessage(bytes);
-
-                        switch (msg.MessageType)
-                        {
-                            case MessageType.Ping: break;
-
-                            case MessageType.Close:
-                                {
-                                    Close(false); break;
-                                }
-                            case MessageType.Connect:
-                                {
-                                    OnRequestReceived(msg); break;
-                                }
-                            case MessageType.Request:
-                                {
-                                    OnRequestReceived(msg); break;
-                                }
-                            case MessageType.OneWayRequest:
-                                {
-                                    OnRequestReceived(msg); break;
-                                }
-                            case MessageType.Response:
-                                {
-                                    _responseManager.SetResponse(msg.Id, msg);
-                                    break;
-                                }
-                            case MessageType.Error:
-                                {
-                                    _responseManager.SetResponse(msg.Id, msg);
-                                    break;
-                                }
-                            default: throw new NotSupportedException(msg.MessageType.ToString());
-                        }
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, $"{_connectionId} stopped receiving");
-                Close(true);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(receiveBuffer);
             }
         }
 
@@ -322,102 +454,19 @@ namespace Xeeny.Sockets
             this.RequestReceived?.Invoke(this, message);
         }
 
-        public async Task SendOneWay(Message message)
-        {
-            LogStarted(message);
-
-            if (message.Id != Guid.Empty || message.MessageType != MessageType.OneWayRequest)
-            {
-                throw new Exception($"Invalid message wrapping");
-            }
-
-            var request = _parser.GetBytes(message);
-            await Send(request);
-
-            LogEnded(message);
-        }
-
-        public async Task SendResponse(Message message)
-        {
-            LogStarted(message);
-
-            if (message.Id == Guid.Empty || message.MessageType != MessageType.Response)
-            {
-                throw new Exception($"Invalid message wrapping");
-            }
-
-            var request = _parser.GetBytes(message);
-            await Send(request);
-
-            LogEnded(message);
-        }
-
-        public async Task SendError(Message message)
-        {
-            LogStarted(message);
-
-            if (message.Id == Guid.Empty || message.MessageType != MessageType.Error)
-            {
-                throw new Exception($"Invalid message wrapping");
-            }
-
-            var request = _parser.GetBytes(message);
-            await Send(request);
-
-            LogEnded(message);
-        }
-
-        public async Task<Message> SendRequest(Message message)
-        {
-            LogStarted(message);
-
-            if (message.Id == Guid.Empty || message.MessageType != MessageType.Request)
-            {
-                throw new Exception($"Message Id of message type {message.MessageType} can not be empty");
-            }
-
-            var context = _responseManager.CreateReponseContext(message.Id, _timeout);
-            try
-            {
-                var request = _parser.GetBytes(message);
-
-                await Send(request);
-
-                //accept this not async as the server is always one way and never calls SendRequest
-                //best async was with CancellationToken and TaskCompletionSource
-                //AutoResetEvent performed better than async
-                var response = context.GetResponse();
-
-                LogEnded(message);
-
-                return response;
-            }
-            catch(Exception ex)
-            {
-                LogError(ex, message, "Failed to send and get response");
-                throw;
-            }
-            finally
-            {
-                _responseManager.RemoveResponseContext(context);
-            }
-        }
-
         void LogStarted(Message msg)
         {
-            _logger.LogTrace("Started", _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogTrace("Started", _id, msg.MessageType);
         }
 
         void LogEnded(Message msg)
         {
-            _logger.LogTrace("Ended", _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogTrace("Ended", _id, msg.MessageType);
         }
 
         void LogError(Exception ex, Message msg, string message)
         {
-            _logger.LogError(ex, message, _connectionId, msg.Id, msg.MessageType, msg.Address, msg.Payload?.Length);
+            Logger.LogError(ex, message, _id, msg.MessageType);
         }
-
-
     }
 }

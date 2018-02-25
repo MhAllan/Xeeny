@@ -4,7 +4,7 @@ using System.Text;
 using Xeeny.Dispatching;
 using Xeeny.Messaging;
 using Xeeny.Sockets;
-using Xeeny.Sockets.Messages;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Connections
 {

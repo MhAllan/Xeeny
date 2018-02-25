@@ -2,13 +2,13 @@
 using Xeeny.Dispatching;
 using Xeeny.Messaging;
 using Xeeny.Sockets;
-using Xeeny.Sockets.Messages;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Xeeny.Proxies.ProxyGeneration;
 using Microsoft.Extensions.Logging;
+using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Connections
 {
@@ -67,30 +67,30 @@ namespace Xeeny.Connections
 
                 case MessageType.Request:
                     {
-                        Message? response = null;
+                        RequestHandleResult result;
                         try
                         {
                             var instanceContext = _instanceContextFactory.CreateInstanceContext(this);
-                            response = await instanceContext.HandleRequest(message, this);
+                            result = await instanceContext.HandleRequest(message, this);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, $"Connection {Id} failed to handle {msgType.ToString()}");
-                            response = _msgBuilder.CreateError(message.Id, "Server Error");
+                            var error = _msgBuilder.CreateError(message.Id, "Server Error");
+                            result = new RequestHandleResult(error, true);
                         }
 
-                        if (response.HasValue)
+                        if (result.HasResponse)
                         {
-                            await this.Socket.SendResponse(response.Value);
+                            await this.Socket.SendResponse(result.Response);
                         }
                         break;
                     }
 
                 default:
                     {
-                         throw new Exception($"Wrong protocol usage, Server can't accept messages of type {msgType}");
+                        throw new Exception($"Wrong protocol usage, Server can't accept messages of type {msgType}");
                     }
-
             }
 
         }
