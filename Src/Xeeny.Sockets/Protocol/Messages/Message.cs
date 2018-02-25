@@ -60,13 +60,13 @@ namespace Xeeny.Sockets.Protocol.Messages
         public static Message ReadFragment(byte[] buffer, int offset, int count)
         {
             var messageType = (MessageType)buffer[offset + _messageTypeIndex];
-            var id = new Guid(new Span<byte>(buffer,_idIndex, 16).ToArray());
+            var id = new Guid(ArrayHelper.GetSubArray(buffer,_idIndex, 16));
 
             var fragmentType = (FragmentType)buffer[_fragmentTypeIndex];
             var fragmentId = BitConverter.ToInt32(buffer, _fragmentIdIndex);
 
             var payloadSize = count - _payloadIndex;
-            var payload = new Span<byte>(buffer, _payloadIndex, payloadSize).ToArray();
+            var payload = ArrayHelper.GetSubArray(buffer, _payloadIndex, payloadSize);
 
             var result = new Message(messageType, id, fragmentType, fragmentId, payload);
 

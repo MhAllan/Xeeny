@@ -6,6 +6,14 @@ namespace Xeeny.Sockets.Protocol
 {
     static class ArrayHelper
     {
+        public static byte[] GetSubArray(byte[] src, int offset, int count)
+        {
+            var result = new byte[count];
+            Array.Copy(src, offset, result, 0, count);
+
+            return result;
+        }
+
         public static void Copy(byte[] src, byte[] dest)
         {
             Array.Copy(src, 0, dest, 0, src.Length);
