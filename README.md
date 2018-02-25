@@ -27,6 +27,7 @@ Cross Platform, Duplex, Scalable, Configurable, and Extendable
 	* [Connection Buffers](#connection-buffers)
    	* [Keep Alive Management](#keep-alive-management)
 * [Serialization](#serialization)
+* [Logging](#logging)
 * [Transports](#transports)
 * [Performance](#performance)
 * [Extend Xeeny](#extend-xeeny)
@@ -396,7 +397,15 @@ var host = new ServiceHostBuilder<ChatService>(InstanceMode.Single)
 await host.Open();
 ```
 
-You can also use your own serializer by implementing ISerializer and then calling `WithSerializer(ISerializer serializer)`
+* You can also use your own serializer by implementing ISerializer and then calling `WithSerializer(ISerializer serializer)`
+
+## Logging
+Xeeny uses same logging system found in Asp.Net Core
+* Console Logger
+* Debug Logger
+* Custome Logger
+
+To use loggers add the nuget package of the logger, then call `WithXXXLogger` where you can pass the `LogLevel`
 
 ## Transports 
 * TCP: Sockets
