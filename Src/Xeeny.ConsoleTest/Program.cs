@@ -78,7 +78,7 @@ namespace Xeeny.ConsoleTest
 
             var client = await clientBuilder.CreateConnection();
 
-            //1 KB, the actual message on the wire will be more than 1 KB (depends on method type, name, and payload)
+            //1 KB, the actual message on the wire will be more than 1 KB (depends on method type, name, and parameters)
             var msg = new string('*', 1000);
 
             for (int j = 0; j < 100; j++)
