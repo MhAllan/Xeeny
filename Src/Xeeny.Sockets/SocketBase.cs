@@ -42,7 +42,7 @@ namespace Xeeny.Sockets
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
-        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, Message.MinMessageSize);
+        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, Formatter.ProtocolMinMessageSize);
         readonly int _maxMessageSize;
         readonly int _sendBufferSize;
         readonly int _receiveBufferSize;
@@ -98,7 +98,7 @@ namespace Xeeny.Sockets
         protected abstract Task OnConnect(CancellationToken ct);
         protected abstract void OnClose(CancellationToken ct);
         protected abstract Task Send(ArraySegment<byte> segment, CancellationToken ct);
-        protected abstract Task Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct);
+        protected abstract Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct);
 
         public async Task Connect()
         {
@@ -143,7 +143,7 @@ namespace Xeeny.Sockets
                     try
                     {
                         var localAgreement = new AgreementMessage(_sendBufferSize, _timeout);
-                        AgreementMessage.Write(localAgreement, buffer, 0);
+                        AgreementMessage.Write(localAgreement, buffer);
                         var segment = new ArraySegment<byte>(buffer);
                         await Send(segment, cts.Token);
 
@@ -151,7 +151,7 @@ namespace Xeeny.Sockets
                         {
                             segment = new ArraySegment<byte>(buffer);
                             await Receive(segment, cts.Token);
-                            var remoteAgreement = AgreementMessage.ReadMessage(segment);
+                            var remoteAgreement = AgreementMessage.ReadMessage(segment.Array);
 
                             _remoteAgreement = remoteAgreement;
                         }
@@ -188,7 +188,7 @@ namespace Xeeny.Sockets
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
                     using (var reg = cts.Token.Register(Close))
                     {
-                        await Receive(_receiveSegment, cts.Token);
+                        var count = await Receive(_receiveSegment, cts.Token);
 
                         var messageType = (MessageType)_receiveSegment.Array[0];
 
@@ -202,14 +202,14 @@ namespace Xeeny.Sockets
                                 }
                             case MessageType.Agreement:
                                 {
-                                    _remoteAgreement = AgreementMessage.ReadMessage(_receiveSegment);
+                                    _remoteAgreement = AgreementMessage.ReadMessage(receiveBuffer);
                                     await ExchangeAgreement();
                                     break;
                                 }
                             case MessageType.OneWayRequest:
                             case MessageType.Request:
                                 {
-                                    var result = _formatter.ReadMessage(_receiveSegment);
+                                    var result = _formatter.ReadMessage(receiveBuffer, count);
                                     if (result.IsComplete)
                                     {
                                         OnRequestReceived(result.Message);
@@ -219,7 +219,7 @@ namespace Xeeny.Sockets
                             case MessageType.Response:
                             case MessageType.Error:
                                 {
-                                    var result = _formatter.ReadMessage(_receiveSegment);
+                                    var result = _formatter.ReadMessage(receiveBuffer, count);
                                     if (result.IsComplete)
                                     {
                                         var msg = result.Message;

@@ -65,43 +65,12 @@ namespace Xeeny.Sockets.TcpSockets
                             .ConfigureAwait(false);
         }
 
-        //protected override async Task Send(IEnumerable<ArraySegment<byte>> segments, CancellationToken ct)
-        //{
-        //    foreach (var segment in segments)
-        //    {
-               
-        //    }
-        //}
-
-        protected override async Task Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
+       
+        protected override async Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
         {
-            var size = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
-                                           .ConfigureAwait(false);
-
-            //return new Span<byte>(receiveBuffer.Array, receiveBuffer.Offset, size).ToArray();
-
-            //using (var ms = new MemoryStream())
-            //{
-            //    bool accepted = false;
-            //    int msgSize = 0;
-            //    int received = 0;
-            //    do
-            //    {
-            //        var size = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
-            //                                .ConfigureAwait(false);
-            //        if (!accepted)
-            //        {
-            //            formatter.ValidateSize(receiveBuffer, out msgSize);
-            //            accepted = true;
-            //        }
-            //        await ms.WriteAsync(receiveBuffer.Array, 0, size);
-
-            //        received += size;
-            //    }
-            //    while (received < msgSize);
-
-            //    return ms.ToArray();
-            //}
+            var read = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
+                                    .ConfigureAwait(false);
+            return read;
         }
 
         protected override void OnClose(CancellationToken ct)

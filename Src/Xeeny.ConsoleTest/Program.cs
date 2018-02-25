@@ -17,8 +17,8 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                //await Profile(SocketType.TCP);
-                await EndToEndTest();
+                await Profile(SocketType.TCP, 1024 * 2);
+                //await EndToEndTest();
             }
             catch(Exception ex)
             {
@@ -31,9 +31,7 @@ namespace Xeeny.ConsoleTest
         }
 
 
-        //monitor response time, cpu, and memory //WebSockets: 1kb msg => 5000 request/second on Corei5 4GB RAM
-        //monitor response time, cpu, and memory //TCP: 1kb msg => 8000 request/second on Corei5 4GB RAM
-        static async Task Profile(SocketType socketType)
+        static async Task Profile(SocketType socketType, int bufferSize)
         {
             var httpAddress = $"http://localhost/test";
             var tcpAddress = "tcp://localhost:9988";
@@ -49,34 +47,26 @@ namespace Xeeny.ConsoleTest
             {
                 hostBuilder.AddWebSocketServer(httpAddress, options =>
                 {
-                    //if you set this on WebSocket,
-                    // it must be less or equal to the client's SendBufferSize, default 4KB
-                    options.ReceiveBufferSize = 1024 * 2;
+                    options.ReceiveBufferSize = bufferSize;
                 });
 
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithWebSocketTransport(httpAddress, options =>
                                     {
-                                        //if you set this on WebSocket, 
-                                        // it must be less or equal to the server's ReceiveBufferSize, default 4KB
-                                        options.SendBufferSize = 1024 * 2;
+                                        options.SendBufferSize = bufferSize;
                                     });
             }
             else if(socketType == SocketType.TCP)
             {
                 hostBuilder.AddTcpServer(tcpAddress, options =>
                 {
-                    //if you set this on WebSocket,
-                    // it must be less or equal to the client's SendBufferSize, default 4KB
-                    options.ReceiveBufferSize = 1024 * 2;
+                    options.ReceiveBufferSize = bufferSize;
                 });
 
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithTcpTransport(tcpAddress, options =>
                                     {
-                                        //if you set this on WebSocket, 
-                                        // it must be less or equal to the server's ReceiveBufferSize, default 4KB
-                                        options.SendBufferSize = 1024 * 2;
+                                        options.SendBufferSize = bufferSize;
                                     });
             }
 
@@ -114,14 +104,11 @@ namespace Xeeny.ConsoleTest
             var host = new ServiceHostBuilder<Service>(InstanceMode.PerConnection)
                             .WithCallback<ICallback>()
                             //add websocket server
-                            .AddWebSocketServer(httpAddress, options => options.ReceiveBufferSize = 1024)
+                            .AddWebSocketServer(httpAddress)
                             //add tcp server
-                            .AddTcpServer(tcpAddress, options =>
-                            {
-                                options.ReceiveBufferSize = 125;
-                            })
+                            .AddTcpServer(tcpAddress)
                             .WithMessagePackSerializer() //it is the default
-                            .WithConsoleLogger(LogLevel.Trace) //default is empty
+                            .WithConsoleLogger()
                             .CreateHost();
 
             host.ServiceInstanceCreated += service =>
@@ -138,7 +125,6 @@ namespace Xeeny.ConsoleTest
                             .WithWebSocketTransport(httpAddress, options =>
                             {
                                 //set connection options
-                                options.SendBufferSize = 125;
                                 options.KeepAliveInterval = TimeSpan.FromMinutes(10);
                             })
                             .WithMessagePackSerializer()
@@ -152,13 +138,6 @@ namespace Xeeny.ConsoleTest
             };
 
             var client1 = await clientBuilder1.CreateConnection();
-
-            var cc = new string('*', 1000);
-            var resp = await client1.Echo(cc);
-            Console.WriteLine(resp.Length);
-            Console.WriteLine(resp);
-
-            return;
 
             var client2 = await clientBuilder1.CreateConnection();
 

@@ -11,7 +11,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
         int MinMessageSize { get; }
         int MaxMessageSize { get; }
 
-        ReadResult ReadMessage(ArraySegment<byte> segment);
+        ReadResult ReadMessage(byte[] buffer, int count);
         WriteResult WriteMessage(Message message, byte[] buffer, int fragmentSize);
     }
 }

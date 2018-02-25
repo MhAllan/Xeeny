@@ -70,36 +70,11 @@ namespace Xeeny.Sockets.WebSockets
                                .ConfigureAwait(false);
         }
         
-        protected override async Task Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
+        protected override async Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
         {
-            await _webSocket.ReceiveAsync(receiveBuffer, ct)
+            var result = await _webSocket.ReceiveAsync(receiveBuffer, ct)
                                              .ConfigureAwait(false);
-            //using (var ms = new MemoryStream())
-            //{
-            //    bool accepted = false;
-
-            //    WebSocketReceiveResult result;
-            //    int msgSize = 0;
-            //    int received = 0;
-            //    do
-            //    {
-            //        result = await _webSocket.ReceiveAsync(receiveBuffer, ct)
-            //                                 .ConfigureAwait(false);
-
-            //        if (!accepted)
-            //        {
-            //            parser.ValidateSize(receiveBuffer, out msgSize);
-            //            accepted = true;
-            //        }
-
-            //        await ms.WriteAsync(receiveBuffer.Array, 0, result.Count);
-
-            //        received += result.Count;
-            //    }
-            //    while (received < msgSize);
-
-            //    return ms.ToArray();
-            //}
+            return result.Count;
         }
     }
 }

@@ -47,7 +47,8 @@ namespace Xeeny.Messaging
             var buffer = message.Payload;
             var size = BitConverter.ToInt32(buffer, 0);
             var address = Encoding.ASCII.GetString(buffer, 4, size);
-            parameters = new ArraySegment<byte>(buffer, address.Length + 4, buffer.Length - 4 - address.Length);
+            var addressLen = address.Length + 4;
+            parameters = new ArraySegment<byte>(buffer, addressLen, buffer.Length - addressLen);
 
             return address;
         }

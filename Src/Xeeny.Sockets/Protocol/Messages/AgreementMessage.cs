@@ -26,29 +26,24 @@ namespace Xeeny.Sockets.Protocol.Messages
         const byte _timeoutIndex = _fragmentSizeIndex + 4; //4 bytes
         const byte _messageFixedSize = _timeoutIndex + 4;
 
-        public static AgreementMessage ReadMessage(ArraySegment<byte> segment)
+        public static AgreementMessage ReadMessage(byte[] buffer)
         {
-            return ReadMessage(segment.Array, segment.Offset, segment.Count);
-        }
-
-        public static AgreementMessage ReadMessage(byte[] buffer, int offset, int count)
-        {
-            var fragmentSize = BitConverter.ToInt32(buffer, offset + _fragmentSizeIndex);
-            var timeout = BitConverter.ToInt32(buffer, offset + _timeoutIndex);
+            var fragmentSize = BitConverter.ToInt32(buffer, _fragmentSizeIndex);
+            var timeout = BitConverter.ToInt32(buffer, _timeoutIndex);
 
             var result = new AgreementMessage(fragmentSize, timeout);
 
             return result;
         }
 
-        public static void Write(AgreementMessage message, byte[] buffer, int offset)
+        public static void Write(AgreementMessage message, byte[] buffer)
         {
             var fragmentSize = BitConverter.GetBytes(message.FragmentSize);
             var timeout = BitConverter.GetBytes(message.Timeout);
 
-            buffer[offset] = (byte)MessageType.Agreement;
-            ArrayHelper.CopyToIndex(fragmentSize, buffer, offset + _fragmentSizeIndex);
-            ArrayHelper.CopyToIndex(timeout, buffer, offset + _timeoutIndex);
+            buffer[_messageTypeIndex] = (byte)MessageType.Agreement;
+            BufferHelper.CopyToIndex(fragmentSize, buffer, _fragmentSizeIndex);
+            BufferHelper.CopyToIndex(timeout, buffer, _timeoutIndex);
         }
     }
 }

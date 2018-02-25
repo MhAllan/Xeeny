@@ -6,7 +6,7 @@ using Xeeny.Sockets.Protocol.Messages;
 
 namespace Xeeny.Sockets.Protocol.Formatters
 {
-    struct FragmentCollection
+    class FragmentCollection
     {
         public Guid MessageId => _messageId;
 
@@ -19,9 +19,10 @@ namespace Xeeny.Sockets.Protocol.Formatters
         readonly byte[][] _fragments;
         readonly DateTime _expirationDate;
 
+        readonly int _fragmentsCount;
         int _currentFragmentsCount;
 
-        public FragmentCollection(MessageType messageType, Guid messageId, int totalSize, TimeSpan timeout)
+        public FragmentCollection(MessageType messageType, Guid messageId, int totalSize, int fragmentsCount, TimeSpan timeout)
         {
             _messageType = messageType;
             _messageId = messageId;
@@ -29,6 +30,9 @@ namespace Xeeny.Sockets.Protocol.Formatters
 
             _currentFragmentsCount = 0;
             _expirationDate = DateTime.UtcNow.Add(timeout);
+
+            _fragmentsCount = fragmentsCount;
+            _fragments = new byte[fragmentsCount][];
 
             IsCompleted = false;
         }
@@ -40,7 +44,8 @@ namespace Xeeny.Sockets.Protocol.Formatters
                 throw new Exception($"Incomplete, collected {_currentFragmentsCount} out of {_fragmentsCount} fragments");
             }
 
-            var buffer = new byte[_totalSize];
+            var payloadSize = _totalSize - Formatter.ProtocolMinMessageSize;
+            var buffer = new byte[payloadSize];
 
             var index = 0;
             foreach (var msg in _fragments)
@@ -49,7 +54,7 @@ namespace Xeeny.Sockets.Protocol.Formatters
                 index += msg.Length;
             }
 
-            var result = new Message(_messageType, _totalSize, _messageId, 0, buffer);
+            var result = new Message(_messageType, _messageId, buffer);
 
             return result;
         }
