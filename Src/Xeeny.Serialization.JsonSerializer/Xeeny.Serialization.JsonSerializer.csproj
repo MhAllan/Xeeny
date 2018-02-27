@@ -13,6 +13,7 @@
     <PackageIconUrl>http://icons.iconarchive.com/icons/kyo-tux/delikate/64/Network-icon.png</PackageIconUrl>
     <PackageTags>C# csharp .net standard dotnetstandard duplex services cross-platform multiple-transport tcp udp framework xamarin</PackageTags>
     <PackageReleaseNotes>first release</PackageReleaseNotes>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

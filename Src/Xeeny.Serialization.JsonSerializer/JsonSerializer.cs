@@ -9,7 +9,17 @@ namespace Xeeny.Serialization
 {
     class JsonSerializer : ISerializer
     {
-        Newtonsoft.Json.JsonSerializer serializer = new Newtonsoft.Json.JsonSerializer();
+        private Newtonsoft.Json.JsonSerializer serializer;
+
+        public JsonSerializer()
+        {
+            serializer = new Newtonsoft.Json.JsonSerializer();
+        }
+
+        public JsonSerializer(JsonSerializerSettings settings)
+        {
+            serializer = Newtonsoft.Json.JsonSerializer.Create(settings);
+        }
 
         public object Deserialize(Type type, byte[] data)
         {
