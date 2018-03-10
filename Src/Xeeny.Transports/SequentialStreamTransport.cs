@@ -42,10 +42,7 @@ namespace Xeeny.Transports
                 var read = await Receive(receiveBuffer, ct);
                 totalRead += read;
                 _buffer.Write(receiveBuffer, 0, read);
-                if(_size == 0 && totalRead > 4)
-                {
-                    _size = _buffer.ReadInteger(0);
-                }
+                _size = _buffer.ReadInteger(0);
             }
 
             var messageType = (MessageType)_buffer[_messageTypeIndex];
@@ -60,7 +57,6 @@ namespace Xeeny.Transports
             var msg = new Message(messageType, id, payload);
 
             _buffer.Trim(_size);
-
             _size = _buffer.ReadInteger(0);
 
             return msg;
