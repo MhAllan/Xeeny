@@ -11,7 +11,8 @@ namespace Xeeny.Sockets
 {
     static class SocketTools
     {
-        static readonly ConcurrentDictionary<string, IPAddress> _resolvedIPs = new ConcurrentDictionary<string, IPAddress>();
+        static readonly ConcurrentDictionary<string, IPAddress> _resolvedIPs = 
+            new ConcurrentDictionary<string, IPAddress>();
 
         public static IPAddress GetIP(Uri uri, IPVersion ipVersion)
         {

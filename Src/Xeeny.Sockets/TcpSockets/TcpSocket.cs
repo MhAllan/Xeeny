@@ -78,6 +78,7 @@ namespace Xeeny.Sockets.TcpSockets
 
         protected override void OnClose(CancellationToken ct)
         {
+            base.OnClose(ct);
             try
             {
                 _socket.Shutdown(SocketShutdown.Both);

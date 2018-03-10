@@ -107,5 +107,10 @@ namespace Xeeny.Transports
                 _sendLock.Release();
             }
         }
+
+        protected override void OnClose(CancellationToken ct)
+        {
+            _buffer.Dispose();
+        }
     }
 }

@@ -53,6 +53,7 @@ namespace Xeeny.Sockets.WebSockets
 
         protected override async void OnClose(CancellationToken ct)
         {
+            base.OnClose(ct);
             try
             {
                 await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Session Ended", ct);
