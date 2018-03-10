@@ -38,14 +38,10 @@ namespace Xeeny.Dispatching
                 var desc = operationContext.OperationDescription;
 
                 var parameters = _msgBuilder.UnpackParameters(parametersSpan, desc.ParameterTypes);
-                dynamic result = operationContext.Execute(_service, parameters);
+                var result = await operationContext.Execute(_service, parameters);
 
                 if (!desc.IsOneWay)
                 {
-                    if(desc.IsAwaitable)
-                    {
-                        result = await result;
-                    }
                     var response = _msgBuilder.CreateResponse(message.Id, result);
                     return new RequestHandleResult(response, true);
                 }

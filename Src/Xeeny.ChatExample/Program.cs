@@ -4,6 +4,7 @@ using Xeeny.Connections;
 using Xeeny.Dispatching;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Xeeny.ChatExample
 {
