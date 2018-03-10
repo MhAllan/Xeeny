@@ -1,11 +1,10 @@
-﻿using Xeeny.Sockets;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Xeeny.Transports;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
     public interface IListener
     {
