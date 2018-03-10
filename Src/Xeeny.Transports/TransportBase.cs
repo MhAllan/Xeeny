@@ -29,6 +29,9 @@ namespace Xeeny.Transports
             }
         }
 
+        protected abstract int MinMessageSize { get; }
+        protected int MaxMessageSize => _maxMessageSize;
+
         readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
         byte _leftKeepAliveRetries = 0;
         bool _isSending = false;
@@ -40,6 +43,7 @@ namespace Xeeny.Transports
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
+        readonly int _maxMessageSize;
         readonly int _sendBufferSize;
         readonly int _receiveBufferSize;
 
@@ -49,9 +53,27 @@ namespace Xeeny.Transports
 
         public TransportBase(TransportSettings settings, ILogger logger)
         {
+            var maxMessageSize = settings.MaxMessageSize;
             var sendBufferSize = settings.SendBufferSize;
             var receiveBufferSize = settings.ReceiveBufferSize;
-            
+
+            if (maxMessageSize <= MinMessageSize)
+            {
+                throw new Exception($"settings property {nameof(settings.MaxMessageSize)} must be larger " +
+                    $"then {MinMessageSize}");
+            }
+            if (sendBufferSize <= MinMessageSize)
+            {
+                throw new Exception($"settings property {nameof(settings.SendBufferSize)} must be larger " +
+                    $"then {MinMessageSize}");
+            }
+            if (receiveBufferSize <= MinMessageSize)
+            {
+                throw new Exception($"settings property {nameof(settings.ReceiveBufferSize)} must be larger " +
+                    $"then {MinMessageSize}");
+            }
+
+            _maxMessageSize = maxMessageSize;
             _sendBufferSize = sendBufferSize;
             _receiveBufferSize = receiveBufferSize;
 
@@ -356,17 +378,17 @@ namespace Xeeny.Transports
 
         void LogStarted(Message msg)
         {
-            Logger.LogTrace("Started", _id, msg.MessageType);
+            Logger.LogTrace("Started", _id, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
 
         void LogEnded(Message msg)
         {
-            Logger.LogTrace("Ended", _id, msg.MessageType);
+            Logger.LogTrace("Ended", _id, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
 
         void LogError(Exception ex, Message msg, string message)
         {
-            Logger.LogError(ex, message, _id, msg.MessageType);
+            Logger.LogError(ex, message, _id, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
     }
 

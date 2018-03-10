@@ -16,18 +16,15 @@ namespace Xeeny.Transports
         const byte _idIndex = 5; //16 bytes guid
         const byte _payloadIndex = 21;
 
-        public int MinMessageSize => _payloadIndex;
-        public int MaxMessageSize => _maxMessageSize;
+        protected override int MinMessageSize => _payloadIndex;
 
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
-        readonly int _maxMessageSize;
 
         RichBuffer _buffer;
         int _size;
 
         public SequentialStreamTransport(TransportSettings settings, ILogger logger) : base(settings, logger)
         {
-            _maxMessageSize = settings.MaxMessageSize;
             _buffer = new RichBuffer(settings.ReceiveBufferSize);
         }
 
@@ -40,7 +37,7 @@ namespace Xeeny.Transports
             {
                 var read = await Receive(receiveBuffer, ct);
                 _buffer.Write(receiveBuffer, 0, read);
-                _size = _buffer.ReadInteger(0);
+                _size = GetNextMessageSize();
             }
 
             var messageType = (MessageType)_buffer[_messageTypeIndex];
@@ -55,9 +52,19 @@ namespace Xeeny.Transports
             var msg = new Message(messageType, id, payload);
 
             _buffer.Trim(_size);
-            _size = _buffer.ReadInteger(0);
+            _size = GetNextMessageSize();
 
             return msg;
+        }
+
+        int GetNextMessageSize()
+        {
+            var size = _buffer.ReadInteger(0);
+            if(size > MaxMessageSize)
+            {
+                throw new Exception($"Received message size is {size} while maximum is {MaxMessageSize}");
+            }
+            return size;
         }
 
         protected override async Task SendMessage(Message message, byte[] sendBuffer, CancellationToken ct)
