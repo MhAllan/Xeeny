@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Sockets.Protocol.Messages
+namespace Xeeny.Transports
 {
     public enum MessageType : byte
     {
-        Ping,
+        KeepAlive,
         Agreement,
         Connect,
         OneWayRequest,

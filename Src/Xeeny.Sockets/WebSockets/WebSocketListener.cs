@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
+using Xeeny.Transports;
 
 namespace Xeeny.Sockets.WebSockets
 {
@@ -13,13 +14,13 @@ namespace Xeeny.Sockets.WebSockets
         public HttpListener Listener => _listener;
 
         readonly Uri _uri;
-        readonly SocketSettings _socketSettings;
+        readonly TransportSettings _socketSettings;
         readonly ILoggerFactory _loggerFactory;
         readonly ILogger _logger;
 
         HttpListener _listener;
 
-        public WebSocketListener(Uri uri, SocketSettings settings, ILoggerFactory loggerFactory)
+        public WebSocketListener(Uri uri, TransportSettings settings, ILoggerFactory loggerFactory)
         {
             _uri = uri;
             _socketSettings = settings;
@@ -39,7 +40,7 @@ namespace Xeeny.Sockets.WebSockets
             _listener.Start();
         }
 
-        public async Task<ISocket> AcceptSocket()
+        public async Task<ITransport> AcceptSocket()
         {
             var context = await _listener.GetContextAsync();
             if (context.Request.IsWebSocketRequest)

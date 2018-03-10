@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Xeeny.Proxies.ProxyGeneration;
 using Microsoft.Extensions.Logging;
-using Xeeny.Sockets.Protocol.Messages;
+using Xeeny.Transports;
 
 namespace Xeeny.Connections
 {
@@ -21,7 +21,7 @@ namespace Xeeny.Connections
         readonly Type _callbackType;
         object _callback;
 
-        internal ServerConnection(ISocket socket, IMessageBuilder msgBuilder, 
+        internal ServerConnection(ITransport socket, IMessageBuilder msgBuilder, 
             IInstanceContextFactory instanceContextFactory,
             Type callbackType,
             ILogger logger) 
@@ -40,7 +40,7 @@ namespace Xeeny.Connections
             return Task.CompletedTask;
         }
 
-        protected override async void OnRequestReceived(ISocket socket, Message message)
+        protected override async void OnRequestReceived(ITransport socket, Message message)
         {
             var msgType = message.MessageType;
             switch (msgType)

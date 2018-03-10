@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Xeeny.Api.Client.Extended;
 using Xeeny.Sockets;
+using Xeeny.Transports;
 
 namespace Xeeny.Api.Client
 {
@@ -12,9 +13,9 @@ namespace Xeeny.Api.Client
         readonly IXeenySocketFactory _customFactory;
         readonly string _address;
         readonly SocketType _socketType;
-        readonly SocketSettings _settings;
+        readonly TransportSettings _settings;
 
-        public SocketFactory(string address, SocketType socketType, SocketSettings settings)
+        public SocketFactory(string address, SocketType socketType, TransportSettings settings)
         {
             _address = address;
             _socketType = socketType;
@@ -26,7 +27,7 @@ namespace Xeeny.Api.Client
             _customFactory = customFactory;
         }
 
-        public ISocket CreateSocket(ILoggerFactory loggerFactory)
+        public ITransport CreateSocket(ILoggerFactory loggerFactory)
         {
             if (_customFactory != null)
                 return _customFactory.CreateSocket();

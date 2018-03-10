@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Xeeny.Sockets.Protocol.Messages;
+using Xeeny.Transports;
 
 namespace Xeeny.Messaging
 {

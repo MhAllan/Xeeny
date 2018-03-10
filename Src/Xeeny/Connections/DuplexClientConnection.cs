@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Xeeny.Dispatching;
 using Xeeny.Messaging;
-using Xeeny.Sockets;
-using Xeeny.Sockets.Protocol.Messages;
+using Xeeny.Transports;
 
 namespace Xeeny.Connections
 {
@@ -12,7 +11,7 @@ namespace Xeeny.Connections
     {
         readonly IInstanceContextFactory _instanceContextFactory;
 
-        internal DuplexClientConnection(ISocket socket, IMessageBuilder msgBuilder,
+        internal DuplexClientConnection(ITransport socket, IMessageBuilder msgBuilder,
             IInstanceContextFactory instanceContextFactory)
 
             : base(socket, msgBuilder)
@@ -20,7 +19,7 @@ namespace Xeeny.Connections
             _instanceContextFactory = instanceContextFactory;
         }
 
-        protected override async void OnRequestReceived(ISocket socket, Message message)
+        protected override async void OnRequestReceived(ITransport socket, Message message)
         {
             var instanceContext = _instanceContextFactory.CreateInstanceContext(this);
 

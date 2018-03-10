@@ -6,22 +6,23 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Xeeny.Transports;
 
 namespace Xeeny.Sockets.WebSockets
 {
-    public class WebSocket : SocketBase
+    public class WebSocket : SequentialStreamTransport
     {
         System.Net.WebSockets.WebSocket _webSocket;
         Uri _uri;
 
-        public WebSocket(System.Net.WebSockets.WebSocket socket, SocketSettings settings, ILoggerFactory loggerFactory)
+        public WebSocket(System.Net.WebSockets.WebSocket socket, TransportSettings settings, ILoggerFactory loggerFactory)
             : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = socket;
             SetState();
         }
 
-        public WebSocket(Uri uri, SocketSettings settings, ILoggerFactory loggerFactory)
+        public WebSocket(Uri uri, TransportSettings settings, ILoggerFactory loggerFactory)
             : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = new System.Net.WebSockets.ClientWebSocket();
@@ -64,17 +65,29 @@ namespace Xeeny.Sockets.WebSockets
             catch { }
         }
 
-        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
+        protected override async Task Send(byte[] sendBuffer, int count, CancellationToken ct)
         {
+            var segment = new ArraySegment<byte>(sendBuffer, 0, count);
             await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, ct)
-                               .ConfigureAwait(false);
+                            .ConfigureAwait(false);
         }
-        
-        protected override async Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
+
+        protected override async Task<int> Receive(byte[] receiveBuffer, CancellationToken ct)
         {
-            var result = await _webSocket.ReceiveAsync(receiveBuffer, ct)
-                                             .ConfigureAwait(false);
+            var segment = new ArraySegment<byte>(receiveBuffer);
+            var result = await _webSocket.ReceiveAsync(segment, ct)
+                                        .ConfigureAwait(false);
             return result.Count;
+        }
+
+        protected override void OnKeepAlivedReceived(Message message)
+        {
+            //nothing
+        }
+
+        protected override void OnAgreementReceived(Message message)
+        {
+            //nothing
         }
     }
 }

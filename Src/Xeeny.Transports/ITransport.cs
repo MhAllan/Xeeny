@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using Xeeny.Sockets.Protocol.Messages;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
-    public interface ISocket : IConnectionObject
+    public interface ITransport : IConnectionObject
     {
         string Id { get; }
-        event Action<ISocket, Message> RequestReceived;
+        event Action<ITransport, Message> RequestReceived;
 
         Task SendOneWay(Message message);
 

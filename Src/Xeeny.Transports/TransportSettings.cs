@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
-    public class SocketSettings
+    public class TransportSettings
     {
         //this is also the socket's SendTimeout
         /// <summary>

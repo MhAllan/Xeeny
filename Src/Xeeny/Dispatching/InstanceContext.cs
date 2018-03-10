@@ -8,7 +8,7 @@ using Xeeny.Descriptions;
 using Xeeny.Messaging;
 using Xeeny.Connections;
 using Microsoft.Extensions.Logging;
-using Xeeny.Sockets.Protocol.Messages;
+using Xeeny.Transports;
 
 namespace Xeeny.Dispatching
 {
@@ -38,10 +38,14 @@ namespace Xeeny.Dispatching
                 var desc = operationContext.OperationDescription;
 
                 var parameters = _msgBuilder.UnpackParameters(parametersSpan, desc.ParameterTypes);
-                var result = await operationContext.Execute(_service, parameters);
+                dynamic result = operationContext.Execute(_service, parameters);
 
                 if (!desc.IsOneWay)
                 {
+                    if(desc.IsAwaitable)
+                    {
+                        result = await result;
+                    }
                     var response = _msgBuilder.CreateResponse(message.Id, result);
                     return new RequestHandleResult(response, true);
                 }

@@ -3,6 +3,7 @@ using Xeeny.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Transports;
 
 namespace Xeeny.Api.Client
 {
@@ -21,10 +22,10 @@ namespace Xeeny.Api.Client
         }
 
         public static TBuilder WithWebSocketTransport<TBuilder>(this TBuilder builder, string address,
-            Action<SocketSettings> options = null)
+            Action<TransportSettings> options = null)
             where TBuilder : BaseConnectionBuilder
         {
-            var settings = new SocketSettings();
+            var settings = new TransportSettings();
             options?.Invoke(settings);
 
             builder.SocketFactory = new SocketFactory(address, SocketType.WebSocket, settings);

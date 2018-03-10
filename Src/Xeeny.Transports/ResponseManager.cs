@@ -3,10 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using Xeeny.Sockets.Protocol.Messages;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
     class ResponseManager
     {

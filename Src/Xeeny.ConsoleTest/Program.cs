@@ -17,7 +17,7 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                await Profile(SocketType.TCP, 1024 * 2);
+                await Profile(5000, SocketType.TCP, 1024 * 2);
                 //await EndToEndTest();
             }
             catch(Exception ex)
@@ -31,7 +31,7 @@ namespace Xeeny.ConsoleTest
         }
 
 
-        static async Task Profile(SocketType socketType, int bufferSize)
+        static async Task Profile(int count, SocketType socketType, int bufferSize)
         {
             var httpAddress = $"http://localhost/test";
             var tcpAddress = "tcp://localhost:9988";
@@ -86,9 +86,14 @@ namespace Xeeny.ConsoleTest
                 await Task.Delay(1000);
                 var sw = Stopwatch.StartNew();
 
-                for (int i = 0; i < 50000; i++)
+                for (int i = 0; i < count; i++)
                 {
                     var resp = await client.Echo(msg);
+                    //Task.Run(async () =>
+                    //{
+                    //    var resp = await client.Echo(msg);
+                    //    Console.WriteLine(resp.Length);
+                    //});
                 }
 
                 sw.Stop();

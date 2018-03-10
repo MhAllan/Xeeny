@@ -5,15 +5,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Xeeny.Sockets.Protocol.Formatters;
-using Xeeny.Sockets.Protocol.Messages;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
-    public abstract class SocketBase : ISocket
+    public abstract class TransportBase : ITransport
     {
         public string Id => _id;
-        public event Action<ISocket, Message> RequestReceived;
+        public event Action<ITransport, Message> RequestReceived;
         public event Action<IConnectionObject> StateChanged;
 
         ConnectionState _state;
@@ -42,8 +40,6 @@ namespace Xeeny.Sockets
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
-        static readonly int _minMessageSize = Math.Max(AgreementMessage.MessageFixedSize, FragmentFormatter.ProtocolMinMessageSize);
-        readonly int _maxMessageSize;
         readonly int _sendBufferSize;
         readonly int _receiveBufferSize;
 
@@ -51,35 +47,11 @@ namespace Xeeny.Sockets
 
         protected readonly ILogger Logger;
 
-        AgreementMessage? _localAgreement;
-        AgreementMessage? _remoteAgreement;
-
-        FragmentFormatter _formatter;
-
-        public SocketBase(SocketSettings settings, ILogger logger)
+        public TransportBase(TransportSettings settings, ILogger logger)
         {
             var sendBufferSize = settings.SendBufferSize;
             var receiveBufferSize = settings.ReceiveBufferSize;
-            var maxMessageSize = settings.MaxMessageSize;
-
-            if(maxMessageSize < _minMessageSize)
-            {
-                throw new Exception($"{nameof(settings.MaxMessageSize)} can not be less than {_minMessageSize}");
-            }
-
-            if (sendBufferSize < _minMessageSize || sendBufferSize > maxMessageSize)
-            {
-                throw new Exception($"{nameof(settings.SendBufferSize)} must be between " +
-                    $"[{_minMessageSize}, {maxMessageSize}]");
-            }
-
-            if (receiveBufferSize < _minMessageSize || receiveBufferSize > maxMessageSize)
-            {
-                throw new Exception($"{nameof(settings.SendBufferSize)} must be between " +
-                    $"[{_minMessageSize}, {maxMessageSize}]");
-            }
-
-            _maxMessageSize = maxMessageSize;
+            
             _sendBufferSize = sendBufferSize;
             _receiveBufferSize = receiveBufferSize;
 
@@ -97,8 +69,10 @@ namespace Xeeny.Sockets
 
         protected abstract Task OnConnect(CancellationToken ct);
         protected abstract void OnClose(CancellationToken ct);
-        protected abstract Task Send(ArraySegment<byte> segment, CancellationToken ct);
-        protected abstract Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct);
+        protected abstract void OnKeepAlivedReceived(Message message);
+        protected abstract void OnAgreementReceived(Message message);
+        protected abstract Task SendMessage(Message message, byte[] sendBuffer, CancellationToken ct);
+        protected abstract Task<Message> ReceiveMessage(byte[] receiveBuffer, CancellationToken ct);
 
         public async Task Connect()
         {
@@ -111,11 +85,10 @@ namespace Xeeny.Sockets
                     {
                         State = ConnectionState.Connecting;
                         using (var cts = new CancellationTokenSource(_timeout))
-                        using (cts.Token.Register(Close))
+                        using (cts.Token.Register(Close, new CloseBehavior(false, "Connect Timeout")))
                         {
                             var ct = cts.Token;
                             await OnConnect(ct);
-                            await ExchangeAgreement();
                             State = ConnectionState.Connected;
                         }
                     }
@@ -123,7 +96,7 @@ namespace Xeeny.Sockets
                 catch (Exception ex)
                 {
                     Logger.LogError(ex, $"Connection to failed");
-                    Close();
+                    Close(new CloseBehavior(false, "Connection failed"));
                     throw;
                 }
                 finally
@@ -133,98 +106,47 @@ namespace Xeeny.Sockets
             }
         }
 
-        async Task ExchangeAgreement()
-        {
-            if(_localAgreement == null)
-            {
-                using (var cts = new CancellationTokenSource(_timeout))
-                {
-                    var buffer = ArrayPool<byte>.Shared.Rent(AgreementMessage.MessageFixedSize);
-                    try
-                    {
-                        var localAgreement = new AgreementMessage(_sendBufferSize, _timeout);
-                        AgreementMessage.Write(localAgreement, buffer);
-                        var segment = new ArraySegment<byte>(buffer);
-                        await Send(segment, cts.Token);
-
-                        if(_remoteAgreement == null)
-                        {
-                            segment = new ArraySegment<byte>(buffer);
-                            await Receive(segment, cts.Token);
-                            var remoteAgreement = AgreementMessage.ReadMessage(segment.Array);
-
-                            _remoteAgreement = remoteAgreement;
-                        }
-
-                        _localAgreement = localAgreement;
-                    }
-                    finally
-                    {
-                        ArrayPool<byte>.Shared.Return(buffer);
-                    }
-                }
-            }
-
-            var ra = _remoteAgreement.Value;
-            if(ra.FragmentSize > _receiveBufferSize)
-            {
-                throw new Exception($"Remote send buffer is larger than local receive buffer");
-            }
-
-            _formatter = new FragmentFormatter(_maxMessageSize, ra.FragmentSize, TimeSpan.FromMilliseconds(ra.Timeout));
-        }
-
         public async void Listen()
         {
             var receiveBuffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
             {
-                var _receiveSegment = new ArraySegment<byte>(receiveBuffer);
-
                 while (this.State == ConnectionState.Connected)
                 {
                     Logger.LogTrace($"Connection {_id}: receiving");
 
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
-                    using (var reg = cts.Token.Register(Close))
+                    using (var reg = cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
                     {
-                        var count = await Receive(_receiveSegment, cts.Token);
-
-                        var messageType = (MessageType)_receiveSegment.Array[0];
+                        var message = await ReceiveMessage(receiveBuffer, cts.Token);
+                        var messageType = message.MessageType;
 
                         switch (messageType)
                         {
-                            case MessageType.Ping: break;
-
+                            case MessageType.KeepAlive:
+                                {
+                                    OnKeepAlivedReceived(message);
+                                    break;
+                                }
                             case MessageType.Close:
                                 {
-                                    Close(false); break;
+                                    Close(new CloseBehavior(false, "Close message received")); break;
                                 }
                             case MessageType.Agreement:
                                 {
-                                    _remoteAgreement = AgreementMessage.ReadMessage(receiveBuffer);
-                                    await ExchangeAgreement();
+                                    OnAgreementReceived(message);
                                     break;
                                 }
                             case MessageType.OneWayRequest:
                             case MessageType.Request:
                                 {
-                                    var result = _formatter.ReadMessage(receiveBuffer, count);
-                                    if (result.IsComplete)
-                                    {
-                                        OnRequestReceived(result.Message);
-                                    }
+                                    OnRequestReceived(message);
                                     break;
                                 }
                             case MessageType.Response:
                             case MessageType.Error:
                                 {
-                                    var result = _formatter.ReadMessage(receiveBuffer, count);
-                                    if (result.IsComplete)
-                                    {
-                                        var msg = result.Message;
-                                        _responseManager.SetResponse(msg.Id, msg);
-                                    }
+                                    _responseManager.SetResponse(message.Id, message);
                                     break;
                                 }
                             default: throw new NotSupportedException(messageType.ToString());
@@ -235,18 +157,16 @@ namespace Xeeny.Sockets
             catch (Exception ex)
             {
                 Logger.LogError(ex, $"{_id} stopped receiving");
-                Close(true);
+                Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
             }
             finally
             {
-                _formatter?.Dispose();
                 ArrayPool<byte>.Shared.Return(receiveBuffer);
             }
         }
 
         public async void StartPing()
         {
-            var pingMsg = PingMessage.Bytes;
             while (this.State == ConnectionState.Connected)
             {
                 try
@@ -257,7 +177,7 @@ namespace Xeeny.Sockets
                         continue;
 
                     Logger.LogTrace($"Connection {_id} pinging, left retries: {_leftKeepAliveRetries}");
-                    await SendSegment(pingMsg);
+                    await SendMessage(Message.KeepAliveMessage);
                 }
                 catch (Exception ex)
                 {
@@ -349,11 +269,12 @@ namespace Xeeny.Sockets
 
         public void Close()
         {
-            Close(true);
+            Close(new CloseBehavior(true, "Close or Dispose is called"));
         }
 
-        async void Close(bool sendClose)
+        async void Close(object closeBehavior)
         {
+            var behavior = (CloseBehavior)closeBehavior;
             if (CanClose())
             {
                 await _lock.WaitAsync();
@@ -361,17 +282,13 @@ namespace Xeeny.Sockets
                 {
                     if(CanClose())
                     {
+                        Logger.LogTrace($"Connection {Id} is closing because: {behavior.Reason}");
                         State = ConnectionState.Closing;
-                        if (sendClose)
+                        if (behavior.SendClose)
                         {
                             try
                             {
-                                using (var cts = new CancellationTokenSource(_timeout))
-                                using (cts.Token.Register(Close))
-                                {
-                                    var closeMsg = CloseMessage.Bytes;
-                                    await Send(closeMsg, cts.Token);
-                                }
+                                await SendMessage(Message.CloseMessage);
                             }
                             catch { }
                         }
@@ -408,39 +325,22 @@ namespace Xeeny.Sockets
             return State < ConnectionState.Closing;
         }
 
-        async Task SendMessage(Message msg)
+        async Task SendMessage(Message message)
         {
             var sendBuffer = ArrayPool<byte>.Shared.Rent(_sendBufferSize);
             try
             {
-                var writeResult = _formatter.WriteMessage(msg, sendBuffer, _sendBufferSize);
-                while(writeResult.HasMessages)
-                {
-                    await SendSegment(writeResult.Message);
-                }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(sendBuffer);
-            }
-        }
-
-        async Task SendSegment(ArraySegment<byte> segment)
-        {
-            await _lock.WaitAsync();
-            try
-            {
                 using (var cts = new CancellationTokenSource(_timeout))
-                using (cts.Token.Register(Close))
+                using (cts.Token.Register(Close, new CloseBehavior(true, "Send message failed")))
                 {
                     _isSending = true;
-                    await Send(segment, cts.Token);
+                    await SendMessage(message, sendBuffer, cts.Token);
                 }
             }
             finally
             {
                 _isSending = false;
-                _lock.Release();
+                ArrayPool<byte>.Shared.Return(sendBuffer);
             }
         }
 
@@ -467,6 +367,18 @@ namespace Xeeny.Sockets
         void LogError(Exception ex, Message msg, string message)
         {
             Logger.LogError(ex, message, _id, msg.MessageType);
+        }
+    }
+
+    class CloseBehavior
+    {
+        public readonly bool SendClose;
+        public readonly string Reason;
+
+        public CloseBehavior(bool sendClose, string reason)
+        {
+            SendClose = sendClose;
+            Reason = reason;
         }
     }
 }

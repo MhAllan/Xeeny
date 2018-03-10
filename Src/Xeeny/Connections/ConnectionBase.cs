@@ -3,8 +3,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 using Xeeny.Messaging;
-using Xeeny.Sockets;
-using Xeeny.Sockets.Protocol.Messages;
+using Xeeny.Transports;
 
 namespace Xeeny.Connections
 {
@@ -17,16 +16,16 @@ namespace Xeeny.Connections
 
         protected readonly string Id = Guid.NewGuid().ToString();
 
-        protected readonly ISocket Socket;
+        protected readonly ITransport Socket;
 
-        public ConnectionBase(ISocket socket)
+        public ConnectionBase(ITransport socket)
         {
             Socket = socket;
             Socket.StateChanged += OnSocketStateChanged;
             Socket.RequestReceived += OnRequestReceived;
         }
 
-        protected virtual void OnRequestReceived(ISocket socket, Message message)
+        protected virtual void OnRequestReceived(ITransport socket, Message message)
         {
             //Nothing, Implement in subclasses
         }

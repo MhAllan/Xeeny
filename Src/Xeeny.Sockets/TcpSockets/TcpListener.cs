@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Xeeny.Transports;
 using SNS = System.Net.Sockets;
 
 namespace Xeeny.Sockets.TcpSockets
@@ -50,7 +51,7 @@ namespace Xeeny.Sockets.TcpSockets
             _listener.Start();
         }
 
-        public async Task<ISocket> AcceptSocket()
+        public async Task<ITransport> AcceptSocket()
         {
             var socket = await _listener.AcceptSocketAsync();
 

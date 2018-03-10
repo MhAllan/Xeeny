@@ -29,6 +29,7 @@ It is Cross Platform, Duplex, Multiple Transports, Asynchronous, Typed Proxies, 
 
   <ItemGroup>
     <ProjectReference Include="..\Xeeny.Sockets\Xeeny.Sockets.csproj" />
+    <ProjectReference Include="..\Xeeny.Transports\Xeeny.Transports.csproj" />
   </ItemGroup>
 
 </Project>

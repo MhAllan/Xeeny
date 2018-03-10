@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Logging;
-using Xeeny.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Transports;
 
 namespace Xeeny.Api.Client
 {
     public interface ISocketFactory
     {
-        ISocket CreateSocket(ILoggerFactory loggerFactory);
+        ITransport CreateSocket(ILoggerFactory loggerFactory);
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Xeeny.Connections;
 using Xeeny.Messaging;
 using Xeeny.Sockets;
+using Xeeny.Transports;
 
 namespace Xeeny.Connections
 {
@@ -12,7 +13,7 @@ namespace Xeeny.Connections
     {
         readonly IMessageBuilder _msgBuilder;
 
-        internal ClientConnection(ISocket socket, IMessageBuilder msgBuilder)
+        internal ClientConnection(ITransport socket, IMessageBuilder msgBuilder)
             : base(socket)
         {
             _msgBuilder = msgBuilder;

@@ -1,8 +1,9 @@
 ﻿using Xeeny.Api.Server.Extended;
-using Xeeny.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Transports;
+using Xeeny.Sockets;
 
 namespace Xeeny.Api.Server
 {
@@ -20,10 +21,10 @@ namespace Xeeny.Api.Server
         }
 
         public static TBuilder AddWebSocketServer<TBuilder>(this TBuilder builder, string address,
-            Action<SocketSettings> options = null)
+            Action<TransportSettings> options = null)
             where TBuilder : BaseServiceHostBuilder
         {
-            var settings = new SocketSettings();
+            var settings = new TransportSettings();
             options?.Invoke(settings);
             var listener = SocketTools.CreateWebSocketListener(address, settings, builder.LoggerFactory);
             builder.Listeners.Add(listener);

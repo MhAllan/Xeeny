@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
     public enum ConnectionState
     {

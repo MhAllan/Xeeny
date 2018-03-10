@@ -5,24 +5,25 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Xeeny.Transports;
 
 namespace Xeeny.Sockets.TcpSockets
 {
-    public class TcpSocket : SocketBase
+    public class TcpSocket : SequentialStreamTransport
     {
         readonly Socket _socket;
         readonly IPAddress _remoteIP;
         readonly int _remotePort;
         readonly bool _isClient;
 
-        public TcpSocket(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory) 
+        public TcpSocket(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
             : base(settings, loggerFactory.CreateLogger(nameof(TcpSocket)))
         {
             _socket = socket;
             SetState();
         }
 
-        public TcpSocket(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory) 
+        public TcpSocket(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
             : base(settings, loggerFactory.CreateLogger(nameof(TcpSocket)))
         {
             _remoteIP = SocketTools.GetIP(uri, settings.IPVersion);
@@ -59,17 +60,19 @@ namespace Xeeny.Sockets.TcpSockets
             await _socket.ConnectAsync(_remoteIP, _remotePort);
         }
 
-        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
+        protected override async Task Send(byte[] sendBuffer, int count, CancellationToken ct)
         {
+            var segment = new ArraySegment<byte>(sendBuffer, 0, count);
             await _socket.SendAsync(segment, SocketFlags.None)
-                            .ConfigureAwait(false);
+                           .ConfigureAwait(false);
         }
 
-       
-        protected override async Task<int> Receive(ArraySegment<byte> receiveBuffer, CancellationToken ct)
+        protected override async Task<int> Receive(byte[] receiveBuffer, CancellationToken ct)
         {
-            var read = await _socket.ReceiveAsync(receiveBuffer, SocketFlags.None)
+            var segment = new ArraySegment<byte>(receiveBuffer);
+            var read = await _socket.ReceiveAsync(segment, SocketFlags.None)
                                     .ConfigureAwait(false);
+
             return read;
         }
 
@@ -99,6 +102,16 @@ namespace Xeeny.Sockets.TcpSockets
             {
                 Logger.LogTrace($"Connection {Id} Failed to close", ex.Message);
             }
+        }
+
+        protected override void OnKeepAlivedReceived(Message message)
+        {
+            //nothing
+        }
+
+        protected override void OnAgreementReceived(Message message)
+        {
+            //nothing
         }
     }
 }

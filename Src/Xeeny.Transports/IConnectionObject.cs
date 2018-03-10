@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Transports
 {
     public interface IConnectionObject : IDisposable
     {

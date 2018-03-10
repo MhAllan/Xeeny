@@ -5,12 +5,13 @@ using Xeeny.Sockets.WebSockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Transports;
 
 namespace Xeeny.Api
 {
     public static class SocketTools
     {
-        public static WebSocket CreateWebSocket(string address, SocketSettings settings, ILoggerFactory loggerFactory)
+        public static WebSocket CreateWebSocket(string address, TransportSettings settings, ILoggerFactory loggerFactory)
         {
             if (address == null)
             {
@@ -31,7 +32,7 @@ namespace Xeeny.Api
             return new WebSocket(uri, settings, loggerFactory);
         }
 
-        public static IListener CreateWebSocketListener(string address, SocketSettings settings, ILoggerFactory loggerFactory)
+        public static IListener CreateWebSocketListener(string address, TransportSettings settings, ILoggerFactory loggerFactory)
         {
             if (address == null)
             {
