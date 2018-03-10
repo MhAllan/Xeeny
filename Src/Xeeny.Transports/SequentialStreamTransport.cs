@@ -36,11 +36,9 @@ namespace Xeeny.Transports
 
         protected override async Task<Message> ReceiveMessage(byte[] receiveBuffer, CancellationToken ct)
         {
-            var totalRead = 0;
             while (!ct.IsCancellationRequested && (_size == 0 || _size > _buffer.CurrentSize))
             {
                 var read = await Receive(receiveBuffer, ct);
-                totalRead += read;
                 _buffer.Write(receiveBuffer, 0, read);
                 _size = _buffer.ReadInteger(0);
             }

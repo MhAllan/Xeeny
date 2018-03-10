@@ -39,6 +39,16 @@ namespace Xeeny.Transports.Buffers
             return result;
         }
 
+        public int ReadInteger(int offset)
+        {
+            if (_writeIndex - _offset >= 4)
+            {
+                offset += _offset;
+                return BitConverter.ToInt32(_buffer, offset);
+            }
+            return 0;
+        }
+
         void ExpandBuffer(int count)
         {
             if (count <= 0)
@@ -64,16 +74,6 @@ namespace Xeeny.Transports.Buffers
                 _offset = 0;
                 _writeIndex = dataSize;
             }
-        }
-
-        public int ReadInteger(int offset)
-        {
-            if (_writeIndex - _offset >= 4)
-            {
-                offset += _offset;
-                return BitConverter.ToInt32(_buffer, offset);
-            }
-            return 0;
         }
 
         public void Trim(int offset)
