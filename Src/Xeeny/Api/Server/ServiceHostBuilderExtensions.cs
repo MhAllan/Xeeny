@@ -9,11 +9,16 @@ namespace Xeeny.Api.Server
 {
     public static class Extensions
     {
+        static readonly Func<string, string> ServerConnectionNameFormatter = id => $"Server ({id})";
+
         public static TBuilder AddTcpServer<TBuilder>(this TBuilder builder, string address,
             Action<IPSocketSettings> options = null)
             where TBuilder : BaseServiceHostBuilder
         {
-            var settings = new IPSocketSettings();
+            var settings = new IPSocketSettings
+            {
+                ConnectionNameFormatter = ServerConnectionNameFormatter
+            };
             options?.Invoke(settings);
             var listener = SocketTools.CreateTcpListener(address, settings, builder.LoggerFactory);
             builder.Listeners.Add(listener);
@@ -24,7 +29,10 @@ namespace Xeeny.Api.Server
             Action<TransportSettings> options = null)
             where TBuilder : BaseServiceHostBuilder
         {
-            var settings = new TransportSettings();
+            var settings = new TransportSettings
+            {
+                ConnectionNameFormatter = ServerConnectionNameFormatter
+            };
             options?.Invoke(settings);
             var listener = SocketTools.CreateWebSocketListener(address, settings, builder.LoggerFactory);
             builder.Listeners.Add(listener);

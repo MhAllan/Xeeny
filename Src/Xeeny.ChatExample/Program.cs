@@ -14,6 +14,8 @@ namespace Xeeny.ChatExample
         {
             try
             {
+                var serverLogLevel = LogLevel.None;
+
                 var address = $"tcp://localhost:9091/test";
 
                 //note InstanceMode.Single
@@ -23,7 +25,7 @@ namespace Xeeny.ChatExample
                                 {
                                     options.ReceiveTimeout = TimeSpan.FromSeconds(10);
                                 })
-                                .WithConsoleLogger()
+                                .WithConsoleLogger(serverLogLevel)
                                 .CreateHost();
 
                 await host.Open();
@@ -34,6 +36,10 @@ namespace Xeeny.ChatExample
                 var name2 = "Client 2";
                 var name3 = "Client 3";
 
+                var logLevel1 = LogLevel.None;
+                var logLevel2 = LogLevel.None;
+                var logLevel3 = LogLevel.None;
+
                 var callback1 = new Callback { Name = name1 };
                 var callback2 = new Callback { Name = name2 };
                 var callback3 = new Callback { Name = name3 };
@@ -42,16 +48,18 @@ namespace Xeeny.ChatExample
                                     .WithTcpTransport(address, options =>
                                     {
                                         options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+                                        options.ConnectionNameFormatter = id => $"{name1}({id})";
                                     })
-                                    .WithConsoleLogger()
+                                    .WithConsoleLogger(logLevel1)
                                     .CreateConnection();
 
                 var client2 = await new DuplexConnectionBuilder<IChatService, Callback>(callback2)
                                     .WithTcpTransport(address, options =>
                                     {
                                         options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+                                        options.ConnectionNameFormatter = id => $"{name2}({id})";
                                     })
-                                    .WithConsoleLogger()
+                                    .WithConsoleLogger(logLevel2)
                                     .CreateConnection();
 
                 var builder3 = new DuplexConnectionBuilder<IChatService, Callback>(callback3)
@@ -61,8 +69,9 @@ namespace Xeeny.ChatExample
                                         //this client will timeout if it didn't send it's own application messages
                                         //within server ReceiveTimeout 
                                         options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+                                        options.ConnectionNameFormatter = id => $"{name3}({id})";
                                     })
-                                    .WithConsoleLogger();
+                                    .WithConsoleLogger(logLevel3);
 
                 //let's open this explicitly, pass false so connection won't open
                 var client3 = await builder3.CreateConnection(false);
@@ -110,6 +119,9 @@ namespace Xeeny.ChatExample
                 await client1.WhoIsOnline();
 
                 await Task.Delay(1000);
+
+                ((IConnection)client1).Close();
+                ((IConnection)client2).Close();
 
                 Console.WriteLine("Test is done");
             }

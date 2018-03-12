@@ -59,10 +59,12 @@ namespace Xeeny.Transports
 
         int GetNextMessageSize()
         {
-            var size = _buffer.ReadInteger(0);
-            if(size > MaxMessageSize)
+            if (_buffer.TryReadInteger(0, out int size))
             {
-                throw new Exception($"Received message size is {size} while maximum is {MaxMessageSize}");
+                if (size > MaxMessageSize)
+                {
+                    throw new Exception($"Received message size is {size} while maximum is {MaxMessageSize}");
+                }
             }
             return size;
         }

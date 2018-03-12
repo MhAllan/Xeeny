@@ -65,5 +65,10 @@ namespace Xeeny.Transports
         /// <para>Default 1000000 = 1 MB</para>
         /// </summary>
         public int MaxMessageSize { get; set; } = 1000000; //1 MB
+
+        /// <summary>
+        /// Connection name formatter, this is for logging. First argument is connection id.
+        /// </summary>
+        public Func<string, string> ConnectionNameFormatter { get; set; }
     }
 }

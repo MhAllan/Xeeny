@@ -7,9 +7,20 @@ namespace Xeeny.Transports.Buffers
 {
     class RichBuffer : IDisposable
     {
-        public byte this[int index] => _buffer[_offset + index];
         public int CurrentSize => _writeIndex - _offset;
-        
+        public byte this[int index]
+        {
+            get
+            {
+                if(!TryAdjustIndex(ref index))
+                {
+                    throw new ArgumentException(nameof(index));
+                }
+                return _buffer[index];
+            }
+        }
+
+
         readonly int _blockSize;
 
         byte[] _buffer;
@@ -30,23 +41,57 @@ namespace Xeeny.Transports.Buffers
             _writeIndex += count;
         }
 
-        public byte[] Read(int offset, int count)
+        public byte[] Read(int offset, int count, bool trim = false)
         {
-            offset += _offset;
+            if(!TryAdjustIndex(ref offset))
+            {
+                throw new ArgumentException(nameof(offset));
+            }
+            if(count <= 0)
+            {
+                throw new ArgumentException(nameof(count));
+            }
+
             var result = new byte[count];
             Buffer.BlockCopy(_buffer, offset, result, 0, count);
 
+            if(trim)
+            {
+                PrivateTrim(offset);
+            }
             return result;
         }
 
-        public int ReadInteger(int offset)
+        public int Read(byte[] buffer, bool trim = false)
         {
-            if (_writeIndex - _offset >= 4)
+            if(buffer == null || buffer.Length == 0)
             {
-                offset += _offset;
-                return BitConverter.ToInt32(_buffer, offset);
+                throw new ArgumentException(nameof(buffer));
             }
-            return 0;
+            var count = Math.Min(buffer.Length, CurrentSize);
+            if (count > 0)
+            {
+                Buffer.BlockCopy(_buffer, _offset, buffer, 0, count);
+                if (trim)
+                {
+                    PrivateTrim(_offset);
+                }
+            }
+            return count;
+        }
+
+        public bool TryReadInteger(int offset, out int result)
+        {
+            if (CurrentSize >= 4)
+            {
+                if (TryAdjustIndex(ref offset))
+                {
+                    result = BitConverter.ToInt32(_buffer, offset);
+                    return true;
+                }
+            }
+            result = 0;
+            return false;
         }
 
         void ExpandBuffer(int count)
@@ -78,7 +123,15 @@ namespace Xeeny.Transports.Buffers
 
         public void Trim(int offset)
         {
-            offset += _offset;
+            if(!TryAdjustIndex(ref offset))
+            {
+                throw new ArgumentException(nameof(offset));
+            }
+            PrivateTrim(offset);
+        }
+
+        void PrivateTrim(int offset)
+        {
             if (offset <= 0)
             {
                 return;
@@ -104,6 +157,16 @@ namespace Xeeny.Transports.Buffers
             {
                 _offset = offset;
             }
+        }
+
+        bool TryAdjustIndex(ref int offset)
+        {
+            if(offset < 0 || offset > CurrentSize)
+            {
+                return false;
+            }
+            offset += _offset;
+            return true;
         }
 
         byte[] GetBuffer(int blockCount)

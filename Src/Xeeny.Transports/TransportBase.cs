@@ -10,7 +10,8 @@ namespace Xeeny.Transports
 {
     public abstract class TransportBase : ITransport
     {
-        public string Id => _id;
+        public string ConnectionId => _id;
+        public string ConnectionName => _connectionName;
         public event Action<ITransport, Message> RequestReceived;
         public event Action<IConnectionObject> StateChanged;
 
@@ -23,7 +24,7 @@ namespace Xeeny.Transports
                 if (_state != value)
                 {
                     _state = value;
-                    Logger.LogTrace($"{_id} State changed to {value}");
+                    Logger.LogTrace($"{_connectionName} State changed to {value}");
                     OnStateChanged();
                 }
             }
@@ -48,6 +49,7 @@ namespace Xeeny.Transports
         readonly int _receiveBufferSize;
 
         readonly string _id;
+        readonly string _connectionName;
 
         protected readonly ILogger Logger;
 
@@ -85,6 +87,8 @@ namespace Xeeny.Transports
             _leftKeepAliveRetries = settings.KeepAliveRetries;
 
             _id = Guid.NewGuid().ToString();
+            var nameFormatter = settings.ConnectionNameFormatter;
+            _connectionName = nameFormatter == null ? $"Connection ({_id})" : nameFormatter(_id);
 
             Logger = logger;
         }
@@ -117,7 +121,7 @@ namespace Xeeny.Transports
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, $"Connection to failed");
+                    Logger.LogError(ex, $"Connection failed");
                     Close(new CloseBehavior(false, "Connection failed"));
                     throw;
                 }
@@ -135,7 +139,7 @@ namespace Xeeny.Transports
             {
                 while (this.State == ConnectionState.Connected)
                 {
-                    Logger.LogTrace($"Connection {_id}: receiving");
+                    Logger.LogTrace($"{_connectionName}: receiving");
 
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
                     using (var reg = cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
@@ -178,8 +182,15 @@ namespace Xeeny.Transports
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, $"{_id} stopped receiving");
-                Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
+                if (this.State == ConnectionState.Connected)
+                {
+                    Logger.LogError(ex, $"{_connectionName} stopped receiving");
+                    Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
+                }
+                else
+                {
+                    Logger.LogTrace($"{_connectionName} stopped receiving");
+                }
             }
             finally
             {
@@ -195,16 +206,19 @@ namespace Xeeny.Transports
                 {
                     await Task.Delay(_keepAliveInterval);
 
-                    if (_isSending)
-                        continue;
+                    if (this.State == ConnectionState.Connected)
+                    {
+                        if (_isSending)
+                            continue;
 
-                    Logger.LogTrace($"Connection {_id} pinging, left retries: {_leftKeepAliveRetries}");
-                    await SendMessage(Message.KeepAliveMessage);
+                        Logger.LogTrace($"{_connectionName} pinging, left retries: {_leftKeepAliveRetries}");
+                        await SendMessage(Message.KeepAliveMessage);
+                    }
                 }
                 catch (Exception ex)
                 {
                     _leftKeepAliveRetries--;
-                    Logger.LogTrace($"Connection {_id} pinging failed, left retries: {_leftKeepAliveRetries}");
+                    Logger.LogTrace($"{_connectionName} pinging failed, left retries: {_leftKeepAliveRetries}");
                     if (_leftKeepAliveRetries == 0)
                     {
                         Close(false);
@@ -304,7 +318,7 @@ namespace Xeeny.Transports
                 {
                     if(CanClose())
                     {
-                        Logger.LogTrace($"Connection {Id} is closing because: {behavior.Reason}");
+                        Logger.LogTrace($"{ConnectionName} is closing because: {behavior.Reason}");
                         State = ConnectionState.Closing;
                         if (behavior.SendClose)
                         {
@@ -378,17 +392,17 @@ namespace Xeeny.Transports
 
         void LogStarted(Message msg)
         {
-            Logger.LogTrace("Started", _id, msg.MessageType, msg.Id, msg.Payload?.Length);
+            Logger.LogTrace("Started", _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
 
         void LogEnded(Message msg)
         {
-            Logger.LogTrace("Ended", _id, msg.MessageType, msg.Id, msg.Payload?.Length);
+            Logger.LogTrace("Ended", _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
 
         void LogError(Exception ex, Message msg, string message)
         {
-            Logger.LogError(ex, message, _id, msg.MessageType, msg.Id, msg.Payload?.Length);
+            Logger.LogError(ex, message, _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
         }
     }
 

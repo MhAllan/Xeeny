@@ -85,7 +85,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"Connection {Id} Failed to shutdown", ex.Message);
+                Logger.LogTrace($"Connection {ConnectionName} Failed to shutdown", ex.Message);
             }
             try
             {
@@ -93,7 +93,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"Connection {Id} Failed to disconnect", ex.Message);
+                Logger.LogTrace($"Connection {ConnectionName} Failed to disconnect", ex.Message);
             }
             try
             {
@@ -101,7 +101,7 @@ namespace Xeeny.Sockets.TcpSockets
             }
             catch (Exception ex)
             {
-                Logger.LogTrace($"Connection {Id} Failed to close", ex.Message);
+                Logger.LogTrace($"Connection {ConnectionName} Failed to close", ex.Message);
             }
         }
 
