@@ -14,7 +14,8 @@ namespace Xeeny.Connections
 
         public ConnectionState State => Socket.State;
 
-        protected readonly string Id = Guid.NewGuid().ToString();
+        public string ConnectionId => Socket.ConnectionId;
+        public string ConnectionName => Socket.ConnectionName;
 
         protected readonly ITransport Socket;
 

@@ -60,7 +60,7 @@ namespace Xeeny.Connections
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"Connection {Id} failed to handle {msgType.ToString()}");
+                            LogError(ex, $"Failed to handle {msgType.ToString()}");
                         }
                         break;
                     }
@@ -75,7 +75,7 @@ namespace Xeeny.Connections
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"Connection {Id} failed to handle {msgType.ToString()}");
+                            LogError(ex, $"Failed to handle {msgType.ToString()}");
                             var error = _msgBuilder.CreateError(message.Id, "Server Error");
                             result = new RequestHandleResult(error, true);
                         }
@@ -134,6 +134,14 @@ namespace Xeeny.Connections
         public IConnection GetConnection()
         {
             return this;
+        }
+
+        void LogError(Exception ex, string error)
+        {
+            if(_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, $"{ConnectionName}: {error}");
+            }
         }
     }
 }

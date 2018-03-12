@@ -7,6 +7,7 @@ namespace Xeeny.Transports
 {
     public interface ITransport : IConnectionObject
     {
+        string ConnectionId { get; }
         string ConnectionName { get; }
         event Action<ITransport, Message> RequestReceived;
 

@@ -24,7 +24,7 @@ namespace Xeeny.Transports
                 if (_state != value)
                 {
                     _state = value;
-                    Logger.LogTrace($"{_connectionName} State changed to {value}");
+                    LogTrace($"State changed to {value}");
                     OnStateChanged();
                 }
             }
@@ -51,7 +51,7 @@ namespace Xeeny.Transports
         readonly string _id;
         readonly string _connectionName;
 
-        protected readonly ILogger Logger;
+        readonly ILogger _logger;
 
         public TransportBase(TransportSettings settings, ILogger logger)
         {
@@ -90,7 +90,7 @@ namespace Xeeny.Transports
             var nameFormatter = settings.ConnectionNameFormatter;
             _connectionName = nameFormatter == null ? $"Connection ({_id})" : nameFormatter(_id);
 
-            Logger = logger;
+            _logger = logger;
         }
 
         protected abstract Task OnConnect(CancellationToken ct);
@@ -109,6 +109,7 @@ namespace Xeeny.Transports
                 {
                     if (CanConnect())
                     {
+                        LogTrace("Connecting...");
                         State = ConnectionState.Connecting;
                         using (var cts = new CancellationTokenSource(_timeout))
                         using (cts.Token.Register(Close, new CloseBehavior(false, "Connect Timeout")))
@@ -121,7 +122,7 @@ namespace Xeeny.Transports
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, $"Connection failed");
+                    LogError(ex, "Connection failed");
                     Close(new CloseBehavior(false, "Connection failed"));
                     throw;
                 }
@@ -139,12 +140,15 @@ namespace Xeeny.Transports
             {
                 while (this.State == ConnectionState.Connected)
                 {
-                    Logger.LogTrace($"{_connectionName}: receiving");
+                    LogTrace($"Receiving...");
 
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
                     using (var reg = cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
                     {
                         var message = await ReceiveMessage(receiveBuffer, cts.Token);
+
+                        LogTrace("Received message", message);
+
                         var messageType = message.MessageType;
 
                         switch (messageType)
@@ -184,12 +188,12 @@ namespace Xeeny.Transports
             {
                 if (this.State == ConnectionState.Connected)
                 {
-                    Logger.LogError(ex, $"{_connectionName} stopped receiving");
+                    LogError(ex, $"stopped receiving");
                     Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
                 }
                 else
                 {
-                    Logger.LogTrace($"{_connectionName} stopped receiving");
+                    LogTrace($"stopped receiving");
                 }
             }
             finally
@@ -211,14 +215,14 @@ namespace Xeeny.Transports
                         if (_isSending)
                             continue;
 
-                        Logger.LogTrace($"{_connectionName} pinging, left retries: {_leftKeepAliveRetries}");
+                        LogTrace($"KeepAlive sent, left retries: {_leftKeepAliveRetries}");
                         await SendMessage(Message.KeepAliveMessage);
                     }
                 }
                 catch (Exception ex)
                 {
                     _leftKeepAliveRetries--;
-                    Logger.LogTrace($"{_connectionName} pinging failed, left retries: {_leftKeepAliveRetries}");
+                    LogTrace($"KeepAlive failed, left retries: {_leftKeepAliveRetries}");
                     if (_leftKeepAliveRetries == 0)
                     {
                         Close(false);
@@ -229,7 +233,7 @@ namespace Xeeny.Transports
 
         public async Task SendOneWay(Message message)
         {
-            LogStarted(message);
+            LogTrace("Send OneWay", message);
 
             if (message.MessageType != MessageType.OneWayRequest)
             {
@@ -237,13 +241,11 @@ namespace Xeeny.Transports
             }
 
             await SendMessage(message);
-
-            LogEnded(message);
         }
 
         public async Task SendResponse(Message message)
         {
-            LogStarted(message);
+            LogTrace("Send Response", message);
 
             if (message.MessageType != MessageType.Response)
             {
@@ -251,13 +253,11 @@ namespace Xeeny.Transports
             }
 
             await SendMessage(message);
-
-            LogEnded(message);
         }
 
         public async Task SendError(Message message)
         {
-            LogStarted(message);
+            LogTrace("Send Error", message);
 
             if (message.MessageType != MessageType.Error)
             {
@@ -265,13 +265,11 @@ namespace Xeeny.Transports
             }
 
             await SendMessage(message);
-
-            LogEnded(message);
         }
 
         public async Task<Message> SendRequest(Message message)
         {
-            LogStarted(message);
+            LogTrace("Sending Request", message);
 
             if (message.MessageType != MessageType.Request)
             {
@@ -287,8 +285,6 @@ namespace Xeeny.Transports
                 //best async was with CancellationToken and TaskCompletionSource
                 //AutoResetEvent performed better than async
                 var response = context.GetResponse();
-
-                LogEnded(message);
 
                 return response;
             }
@@ -318,7 +314,7 @@ namespace Xeeny.Transports
                 {
                     if(CanClose())
                     {
-                        Logger.LogTrace($"{ConnectionName} is closing because: {behavior.Reason}");
+                        LogTrace($"Closing because: {behavior.Reason}");
                         State = ConnectionState.Closing;
                         if (behavior.SendClose)
                         {
@@ -333,7 +329,7 @@ namespace Xeeny.Transports
                 }
                 catch(Exception ex)
                 {
-                    Logger.LogError(ex, "Graceful close failed");
+                    LogError(ex, "Graceful close failed");
                 }
                 finally
                 {
@@ -390,19 +386,51 @@ namespace Xeeny.Transports
             this.RequestReceived?.Invoke(this, message);
         }
 
-        void LogStarted(Message msg)
+        protected void LogTrace(string msg)
         {
-            Logger.LogTrace("Started", _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace($"{_connectionName}: {msg}");
         }
 
-        void LogEnded(Message msg)
+        protected void LogTrace(string msg, Message message)
         {
-            Logger.LogTrace("Ended", _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace(MessageToString(msg, message));
         }
 
-        void LogError(Exception ex, Message msg, string message)
+        protected void LogError(Exception ex, string error)
         {
-            Logger.LogError(ex, message, _connectionName, msg.MessageType, msg.Id, msg.Payload?.Length);
+            if (_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError(ex, $"{_connectionName}: {error}");
+        }
+
+        protected void LogError(Exception ex, Message message, string error)
+        {
+            if (_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError(ex, MessageToString(error, message));
+        }
+
+        string MessageToString(string message, Message msg)
+        {
+            return Concat(_connectionName, message, msg.MessageType, msg.Id, msg.Payload?.Length);
+        }
+
+        string Concat(params object[] objs)
+        {
+            if (objs != null && objs.Length > 0)
+            {
+                var sb = new StringBuilder();
+                foreach (var obj in objs)
+                {
+                    if (obj != null)
+                    {
+                        sb.Append(obj).Append(" ");
+                    }
+                }
+                var result = sb.ToString();
+                return result;
+            }
+            return string.Empty;
         }
     }
 

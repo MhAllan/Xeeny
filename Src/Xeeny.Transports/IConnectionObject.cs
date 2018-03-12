@@ -10,6 +10,9 @@ namespace Xeeny.Transports
         event Action<IConnectionObject> StateChanged;
         ConnectionState State { get; }
 
+        string ConnectionId { get; }
+        string ConnectionName { get; }
+
         Task Connect();
         void Close();
     }
