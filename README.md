@@ -275,6 +275,8 @@ You will want to access the underlying connection to manage it, like monitoring 
 * `Close()`: Closes the connection
 * `SessionEnded`: Event fired when the connection is closing (`State` changed to `Closing`)
 * `Dispose()`: Disposes the connection
+* `ConnectionId`: Guid identifies each connection (for now the Id on the server and client don't match)
+* `ConnectionName`: Friendly connection name for easier debugging and logs analystics
 
 ### Access Connection From The Service
 * If your service host doesn't define a callback you get the connection using `OperationContext.Current.GetConnection()` at the beginning of your method and before the service method spawn any new thread.
@@ -329,6 +331,7 @@ All builders expose connection options when you add Server or Transport. the opt
 * `SendBufferSize`: Sending buffer size (_default 4096 byte = 4 KB_)
 * `ReceiveBufferSize` : Receiving buffer size (_default 4096 byte = 4 KB_)
 * `MaxMessageSize`: Maximum size of messages (_default 1000000 byte = 1 MB_)
+* `ConnectionNameFormatter`: Delegate to set or format `ConnectionName` (_default is null_). (See [Logging](#logging))
 
 You get these options configuration action on the server when you call AddXXXServer:
 
@@ -406,6 +409,18 @@ Xeeny uses same logging system found in Asp.Net Core
 * Custome Logger
 
 To use loggers add the nuget package of the logger, then call `WithXXXLogger` where you can pass the `LogLevel`
+
+You may like to name connections so they are easy to spot when debugging or analysing logs, you can do that by setting `ConnectionNameFormatter` function delegate in the options which is passed `IConnection.ConnectionId` as parameter and the return will be assigned to `IConnection.ConnectionName`.
+
+```csharp
+var client1 = await new DuplexConnectionBuilder<IChatService, Callback>(callback1)
+                        .WithTcpTransport(address, options =>
+			{
+				options.ConnectionNameFormatter = id => $"First-Connection ({id})";
+			})
+			.WithConsoleLogger(LogLevel.Trace)
+			.CreateConnection();
+```
 
 ## Transports 
 * TCP: Sockets
