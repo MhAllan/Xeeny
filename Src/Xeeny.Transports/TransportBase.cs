@@ -12,6 +12,8 @@ namespace Xeeny.Transports
     {
         public string ConnectionId => _id;
         public string ConnectionName => _connectionName;
+        public ConnectionSide ConnectionSide => _connectionSide;
+
         public event Action<ITransport, Message> RequestReceived;
         public event Action<IConnectionObject> StateChanged;
 
@@ -30,9 +32,6 @@ namespace Xeeny.Transports
             }
         }
 
-        protected abstract int MinMessageSize { get; }
-        protected int MaxMessageSize => _maxMessageSize;
-
         readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
         byte _leftKeepAliveRetries = 0;
         bool _isSending = false;
@@ -44,41 +43,15 @@ namespace Xeeny.Transports
         readonly int _keepAliveInterval;
         readonly byte _keepAliveRetries;
 
-        readonly int _maxMessageSize;
-        readonly int _sendBufferSize;
-        readonly int _receiveBufferSize;
-
         readonly string _id;
         readonly string _connectionName;
+        readonly ConnectionSide _connectionSide;
 
         readonly ILogger _logger;
 
-        public TransportBase(TransportSettings settings, ILogger logger)
+        public TransportBase(TransportSettings settings, ConnectionSide connectionSide, ILogger logger)
         {
-            var maxMessageSize = settings.MaxMessageSize;
-            var sendBufferSize = settings.SendBufferSize;
-            var receiveBufferSize = settings.ReceiveBufferSize;
-
-            if (maxMessageSize <= MinMessageSize)
-            {
-                throw new Exception($"settings property {nameof(settings.MaxMessageSize)} must be larger " +
-                    $"then {MinMessageSize}");
-            }
-            if (sendBufferSize <= MinMessageSize)
-            {
-                throw new Exception($"settings property {nameof(settings.SendBufferSize)} must be larger " +
-                    $"then {MinMessageSize}");
-            }
-            if (receiveBufferSize <= MinMessageSize)
-            {
-                throw new Exception($"settings property {nameof(settings.ReceiveBufferSize)} must be larger " +
-                    $"then {MinMessageSize}");
-            }
-
-            _maxMessageSize = maxMessageSize;
-            _sendBufferSize = sendBufferSize;
-            _receiveBufferSize = receiveBufferSize;
-
+            
             _timeout = settings.Timeout.TotalMilliseconds;
             _receiveTimeout = settings.ReceiveTimeout.TotalMilliseconds;
             _keepAliveInterval = settings.KeepAliveInterval.TotalMilliseconds;
@@ -89,6 +62,7 @@ namespace Xeeny.Transports
             _id = Guid.NewGuid().ToString();
             var nameFormatter = settings.ConnectionNameFormatter;
             _connectionName = nameFormatter == null ? $"Connection ({_id})" : nameFormatter(_id);
+            _connectionSide = connectionSide;
 
             _logger = logger;
         }
@@ -97,8 +71,8 @@ namespace Xeeny.Transports
         protected abstract void OnClose(CancellationToken ct);
         protected abstract void OnKeepAlivedReceived(Message message);
         protected abstract void OnAgreementReceived(Message message);
-        protected abstract Task SendMessage(Message message, byte[] sendBuffer, CancellationToken ct);
-        protected abstract Task<Message> ReceiveMessage(byte[] receiveBuffer, CancellationToken ct);
+        protected abstract Task SendMessage(Message message, CancellationToken ct);
+        protected abstract Task<Message> ReceiveMessage(CancellationToken ct);
 
         public async Task Connect()
         {
@@ -135,7 +109,6 @@ namespace Xeeny.Transports
 
         public async void Listen()
         {
-            var receiveBuffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
             {
                 while (this.State == ConnectionState.Connected)
@@ -143,9 +116,11 @@ namespace Xeeny.Transports
                     LogTrace($"Receiving...");
 
                     using (var cts = new CancellationTokenSource(_receiveTimeout))
-                    using (var reg = cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
+                    using (cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
                     {
-                        var message = await ReceiveMessage(receiveBuffer, cts.Token);
+                        var message = await ReceiveMessage(cts.Token);
+
+                        cts.Token.ThrowIfCancellationRequested();
 
                         LogTrace("Received message", message);
 
@@ -188,17 +163,13 @@ namespace Xeeny.Transports
             {
                 if (this.State == ConnectionState.Connected)
                 {
-                    LogError(ex, $"stopped receiving");
+                    LogError(ex, "Stopped receiving");
                     Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
                 }
                 else
                 {
                     LogTrace($"stopped receiving");
                 }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(receiveBuffer);
             }
         }
 
@@ -359,20 +330,18 @@ namespace Xeeny.Transports
 
         async Task SendMessage(Message message)
         {
-            var sendBuffer = ArrayPool<byte>.Shared.Rent(_sendBufferSize);
             try
             {
                 using (var cts = new CancellationTokenSource(_timeout))
                 using (cts.Token.Register(Close, new CloseBehavior(true, "Send message failed")))
                 {
                     _isSending = true;
-                    await SendMessage(message, sendBuffer, cts.Token);
+                    await SendMessage(message, cts.Token);
                 }
             }
             finally
             {
                 _isSending = false;
-                ArrayPool<byte>.Shared.Return(sendBuffer);
             }
         }
 

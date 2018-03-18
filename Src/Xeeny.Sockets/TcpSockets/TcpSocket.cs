@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Buffers;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -14,17 +16,16 @@ namespace Xeeny.Sockets.TcpSockets
         readonly Socket _socket;
         readonly IPAddress _remoteIP;
         readonly int _remotePort;
-        readonly bool _isClient;
 
         public TcpSocket(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, loggerFactory.CreateLogger(nameof(TcpSocket)))
+            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(typeof(TcpSocket)))
         {
             _socket = socket;
             SetState();
         }
 
         public TcpSocket(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, loggerFactory.CreateLogger(nameof(TcpSocket)))
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(typeof(TcpSocket)))
         {
             _remoteIP = SocketTools.GetIP(uri, settings.IPVersion);
             _remotePort = uri.Port;
@@ -34,7 +35,6 @@ namespace Xeeny.Sockets.TcpSockets
             {
                 _socket.DualMode = true;
             }
-            _isClient = true;
 
             _socket.SendBufferSize = settings.SendBufferSize;
             _socket.ReceiveBufferSize = settings.ReceiveBufferSize;
@@ -54,22 +54,20 @@ namespace Xeeny.Sockets.TcpSockets
 
         protected override async Task OnConnect(CancellationToken ct)
         {
-            if (!_isClient)
+            if (ConnectionSide != ConnectionSide.Client)
                 throw new Exception("Can not call Connect on this socket because it is not client socket");
 
             await _socket.ConnectAsync(_remoteIP, _remotePort);
         }
 
-        protected override async Task Send(byte[] sendBuffer, int count, CancellationToken ct)
+        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
         {
-            var segment = new ArraySegment<byte>(sendBuffer, 0, count);
             await _socket.SendAsync(segment, SocketFlags.None)
                            .ConfigureAwait(false);
         }
 
-        protected override async Task<int> Receive(byte[] receiveBuffer, CancellationToken ct)
+        protected override async Task<int> Receive(ArraySegment<byte> segment, CancellationToken ct)
         {
-            var segment = new ArraySegment<byte>(receiveBuffer);
             var read = await _socket.ReceiveAsync(segment, SocketFlags.None)
                                     .ConfigureAwait(false);
 
@@ -78,7 +76,6 @@ namespace Xeeny.Sockets.TcpSockets
 
         protected override void OnClose(CancellationToken ct)
         {
-            base.OnClose(ct);
             try
             {
                 _socket.Shutdown(SocketShutdown.Both);

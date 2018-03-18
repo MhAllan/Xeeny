@@ -69,6 +69,6 @@ namespace Xeeny.Transports
         /// <summary>
         /// Connection name formatter, this is for logging. First argument is connection id.
         /// </summary>
-        public Func<string, string> ConnectionNameFormatter { get; set; }
+        public ConnectionNameFormatter ConnectionNameFormatter { get; set; }
     }
 }

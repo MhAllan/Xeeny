@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Transports.Buffers
+namespace Xeeny.Transports
 {
-    static class BufferHelper
+    public static class BufferHelper
     {
         public static byte[] GetSubArray(byte[] src, int offset, int count)
         {

@@ -7,6 +7,8 @@ namespace Xeeny.Transports
 {
     public interface ITransport : IConnectionObject
     {
+        ConnectionSide ConnectionSide { get; }
+
         event Action<ITransport, Message> RequestReceived;
 
         Task SendOneWay(Message message);

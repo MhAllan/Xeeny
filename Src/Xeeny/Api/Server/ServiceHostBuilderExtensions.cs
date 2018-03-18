@@ -9,7 +9,7 @@ namespace Xeeny.Api.Server
 {
     public static class Extensions
     {
-        static readonly Func<string, string> ServerConnectionNameFormatter = id => $"Server ({id})";
+        static readonly ConnectionNameFormatter ServerConnectionNameFormatter = id => $"Server Connection ({id})";
 
         public static TBuilder AddTcpServer<TBuilder>(this TBuilder builder, string address,
             Action<IPSocketSettings> options = null)

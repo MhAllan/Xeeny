@@ -34,6 +34,9 @@ namespace Xeeny.Dispatching
             try
             {
                 var operation = _msgBuilder.UnpackAddress(message, out ArraySegment<byte> parametersSpan);
+
+                LogTrace($"Executing method {operation}");
+
                 var operationContext = CreateOperationContext(serverProxy, operation);
                 var desc = operationContext.OperationDescription;
 
@@ -68,6 +71,14 @@ namespace Xeeny.Dispatching
                 throw new Exception($"Could not find operation {operation}, operation {operation}");
             }
             return new OperationContext(operationDescription, serverProxy);
+        }
+
+        void LogTrace(string msg)
+        {
+            if(_logger.IsEnabled(LogLevel.Trace))
+            {
+                _logger.LogTrace(msg);
+            }
         }
     }
 }

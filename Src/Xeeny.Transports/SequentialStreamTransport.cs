@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Xeeny.Transports.Buffers;
 
 namespace Xeeny.Transports
 {
@@ -16,104 +15,146 @@ namespace Xeeny.Transports
         const byte _idIndex = 5; //16 bytes guid
         const byte _payloadIndex = 21;
 
-        protected override int MinMessageSize => _payloadIndex;
-
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        readonly int _minMessageSize = _payloadIndex + 1;
+        readonly int _maxMessageSize;
+        readonly int _receiveBufferSize;
+        readonly int _sendBufferSize;
 
-        RichBuffer _buffer;
-        int _size;
-
-        public SequentialStreamTransport(TransportSettings settings, ILogger logger) : base(settings, logger)
+        public SequentialStreamTransport(TransportSettings settings, ConnectionSide connectionSide, ILogger logger)
+            : base(settings, connectionSide, logger)
         {
-            _buffer = new RichBuffer(settings.ReceiveBufferSize);
-        }
+            var maxMessageSize = settings.MaxMessageSize;
+            var sendBufferSize = settings.SendBufferSize;
+            var receiveBufferSize = settings.ReceiveBufferSize;
 
-        protected abstract Task Send(byte[] sendBuffer, int count, CancellationToken ct);
-        protected abstract Task<int> Receive(byte[] receiveBuffer, CancellationToken ct);
-
-        protected override async Task<Message> ReceiveMessage(byte[] receiveBuffer, CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested && (_size == 0 || _size > _buffer.CurrentSize))
+            if (maxMessageSize <= _minMessageSize)
             {
-                var read = await Receive(receiveBuffer, ct);
-                _buffer.Write(receiveBuffer, 0, read);
-                _size = GetNextMessageSize();
+                throw new Exception($"settings property {nameof(settings.MaxMessageSize)} must be larger " +
+                    $"then {_minMessageSize}");
+            }
+            if (sendBufferSize <= _minMessageSize)
+            {
+                throw new Exception($"settings property {nameof(settings.SendBufferSize)} must be larger " +
+                    $"then {_minMessageSize}");
+            }
+            if (receiveBufferSize <= _minMessageSize)
+            {
+                throw new Exception($"settings property {nameof(settings.ReceiveBufferSize)} must be larger " +
+                    $"then {_minMessageSize}");
             }
 
-            var messageType = (MessageType)_buffer[_messageTypeIndex];
-            var id = new Guid(_buffer.Read(_idIndex, 16));
-            var payloadSize = _size - _payloadIndex;
-            byte[] payload = null;
-            if (payloadSize > 0)
-            {
-                payload = _buffer.Read(_payloadIndex, payloadSize);
-            }
-
-            var msg = new Message(messageType, id, payload);
-
-            _buffer.Trim(_size);
-            _size = GetNextMessageSize();
-
-            return msg;
+            _maxMessageSize = maxMessageSize;
+            _sendBufferSize = sendBufferSize;
+            _receiveBufferSize = receiveBufferSize;
+            _maxMessageSize = settings.MaxMessageSize;
+            _receiveBufferSize = settings.ReceiveBufferSize;
+            _sendBufferSize = settings.SendBufferSize;
         }
 
-        int GetNextMessageSize()
-        {
-            if (_buffer.TryReadInteger(0, out int size))
-            {
-                if (size > MaxMessageSize)
-                {
-                    throw new Exception($"Received message size is {size} while maximum is {MaxMessageSize}");
-                }
-            }
-            return size;
-        }
+        protected abstract Task Send(ArraySegment<byte> segment, CancellationToken ct);
+        protected abstract Task<int> Receive(ArraySegment<byte> segment, CancellationToken ct);
 
-        protected override async Task SendMessage(Message message, byte[] sendBuffer, CancellationToken ct)
+        protected override async Task SendMessage(Message message, CancellationToken ct)
         {
-            await _sendLock.WaitAsync();
+            var msgSize = _minMessageSize;
+            var payloadSize = 0;
+            var payload = message.Payload;
+            if (payload != null)
+            {
+                payloadSize = payload.Length;
+                msgSize += payloadSize;
+            }
+
+            var buffer = ArrayPool<byte>.Shared.Rent(msgSize);
+            var locked = false;
             try
             {
-                var size = MinMessageSize;
-                var payloadSize = 0;
-                var payload = message.Payload;
-                if (payload != null)
+                BufferHelper.CopyToIndex(BitConverter.GetBytes(msgSize), buffer, _sizeIndex);
+                buffer[_messageTypeIndex] = (byte)message.MessageType;
+                BufferHelper.CopyToIndex(message.Id.ToByteArray(), buffer, _idIndex);
+                if (payloadSize > 0)
                 {
-                    payloadSize = payload.Length;
-                    size += payloadSize;
+                    BufferHelper.CopyToIndex(payload, buffer, _payloadIndex);
                 }
 
-                BufferHelper.CopyToIndex(BitConverter.GetBytes(size), sendBuffer, _sizeIndex);
-                sendBuffer[_messageTypeIndex] = (byte)message.MessageType;
-                BufferHelper.CopyToIndex(message.Id.ToByteArray(), sendBuffer, _idIndex);
-                var bufferIndex = _payloadIndex;
-                var payloadFragmentIndex = 0;
+                var offset = 0;
+                await _sendLock.WaitAsync();
+                locked = true;
 
-                do
+                while (!ct.IsCancellationRequested && offset < msgSize)
                 {
-                    int count = 0;
-                    if (payloadSize > 0)
-                    {
-                        count = Math.Min(payloadSize - payloadFragmentIndex, sendBuffer.Length - bufferIndex);
-                        Buffer.BlockCopy(payload, payloadFragmentIndex, sendBuffer, bufferIndex, count);
-                    }
+                    var left = msgSize - offset;
+                    var next = Math.Min(_sendBufferSize, left);
+                    var segment = new ArraySegment<byte>(buffer, offset, next);
+                    await Send(segment, ct);
 
-                    await Send(sendBuffer, count + bufferIndex, ct);
-
-                    payloadFragmentIndex += count;
-                    bufferIndex = 0;
-
-                } while (payloadFragmentIndex < payloadSize);
+                    offset += next;
+                }
             }
             finally
             {
-                _sendLock.Release();
+                if (locked)
+                {
+                    _sendLock.Release();
+                }
+
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
-        protected override void OnClose(CancellationToken ct)
+        protected override async Task<Message> ReceiveMessage(CancellationToken ct)
         {
-            _buffer.Dispose();
+            var buffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
+            try
+            {
+                var read = 0;
+                var msgSize = -1;
+
+                while (!ct.IsCancellationRequested && (msgSize == -1 || read < msgSize))
+                {
+                    var len = msgSize == -1 ? 4 : msgSize - read;
+                    var segment = new ArraySegment<byte>(buffer, read, len);
+
+                    read += await Receive(segment, ct);
+                    if (msgSize == -1 && read >= 4)
+                    {
+                        msgSize = BitConverter.ToInt32(buffer, 0);
+                        if (msgSize < _minMessageSize)
+                        {
+                            throw new Exception($"Received message size {msgSize} while minimum is {_minMessageSize}");
+                        }
+                        if (msgSize > _maxMessageSize)
+                        {
+                            throw new Exception($"Received message size {msgSize} while maximum is {_maxMessageSize}");
+                        }
+                        if (msgSize > _receiveBufferSize)
+                        {
+                            var newBuffer = ArrayPool<byte>.Shared.Rent(msgSize);
+                            Buffer.BlockCopy(buffer, 0, newBuffer, 0, read);
+                            ArrayPool<byte>.Shared.Return(buffer);
+                            buffer = newBuffer;
+                        }
+                    }
+
+                }
+
+                var msgType = (MessageType)buffer[_messageTypeIndex];
+                var id = new Guid(BufferHelper.GetSubArray(buffer, _idIndex, 16));
+                byte[] payload = null;
+                var payloadLength = msgSize - _payloadIndex;
+                if (payloadLength > 0)
+                {
+                    payload = BufferHelper.GetSubArray(buffer, _payloadIndex, payloadLength);
+                }
+
+                return new Message(msgType, id, payload);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
+
     }
 }
