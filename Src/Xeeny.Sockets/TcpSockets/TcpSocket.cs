@@ -18,14 +18,14 @@ namespace Xeeny.Sockets.TcpSockets
         readonly int _remotePort;
 
         public TcpSocket(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(typeof(TcpSocket)))
+            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpSocket)))
         {
             _socket = socket;
             SetState();
         }
 
         public TcpSocket(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(typeof(TcpSocket)))
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(TcpSocket)))
         {
             _remoteIP = SocketTools.GetIP(uri, settings.IPVersion);
             _remotePort = uri.Port;
