@@ -16,7 +16,7 @@ namespace Xeeny.Transports
         const byte _payloadIndex = 21;
 
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
-        readonly int _minMessageSize = _payloadIndex + 1;
+        readonly int _minMessageSize = _payloadIndex;
         readonly int _maxMessageSize;
         readonly int _receiveBufferSize;
         readonly int _sendBufferSize;
