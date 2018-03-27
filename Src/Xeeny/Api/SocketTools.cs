@@ -9,7 +9,7 @@ using Xeeny.Transports;
 
 namespace Xeeny.Api
 {
-    public static class SocketTools
+    static class SocketTools
     {
         public static WebSocket CreateWebSocket(string address, TransportSettings settings, ILoggerFactory loggerFactory)
         {

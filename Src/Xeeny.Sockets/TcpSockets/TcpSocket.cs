@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Xeeny.Sockets.TcpSockets
 {
-    class TcpSocket : ISocket
+    public class TcpSocket : ISocket
     {
         public Stream Stream
         {

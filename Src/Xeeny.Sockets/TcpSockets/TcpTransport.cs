@@ -14,7 +14,7 @@ namespace Xeeny.Sockets.TcpSockets
         readonly IPAddress _remoteIP;
         readonly int _remotePort;
 
-        public TcpTransport(ISocket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public TcpTransport(TcpSocket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
             : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpTransport)))
         {
             _socket = socket;

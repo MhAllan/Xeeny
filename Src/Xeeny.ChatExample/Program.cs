@@ -14,7 +14,7 @@ namespace Xeeny.ChatExample
         {
             try
             {
-                var serverLogLevel = LogLevel.Trace;
+                var serverLogLevel = LogLevel.None;
 
                 var address = $"tcp://localhost:9091/test";
 
