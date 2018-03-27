@@ -51,7 +51,7 @@ namespace Xeeny.Api
             return new WebSocketListener(uri, settings, loggerFactory);
         }
 
-        public static TcpSocket CreateTcpSocket(string address, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public static TcpTransport CreateTcpSocket(string address, IPSocketSettings settings, ILoggerFactory loggerFactory)
         {
             if (address == null)
             {
@@ -64,7 +64,7 @@ namespace Xeeny.Api
                 throw new Exception($"{nameof(address)} must be valid tcp:// or net.tcp:// address");
             }
 
-            return new TcpSocket(uri, settings, loggerFactory);
+            return new TcpTransport(uri, settings, loggerFactory);
         }
 
         public static IListener CreateTcpListener(string address, IPSocketSettings settings, ILoggerFactory loggerFactory)
