@@ -19,8 +19,8 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                //await SslTest();
-                await Profile(5000, SocketType.TCP, false, 1024 * 2);
+                await SslTest();
+                //await Profile(5000, SocketType.TCP, false, 1024 * 2);
                 //await EndToEndTest();
             }
             catch(Exception ex)

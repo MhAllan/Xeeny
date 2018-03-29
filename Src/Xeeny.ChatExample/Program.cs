@@ -5,6 +5,7 @@ using Xeeny.Dispatching;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Xeeny.ChatExample
 {
@@ -15,7 +16,6 @@ namespace Xeeny.ChatExample
             try
             {
                 var serverLogLevel = LogLevel.None;
-
                 var address = $"tcp://localhost:9091/test";
 
                 //note InstanceMode.Single
@@ -133,6 +133,23 @@ namespace Xeeny.ChatExample
             {
                 Console.ReadLine();
             }
+        }
+
+        static X509Certificate2 GetXeenyTestCertificate(out string certificateName)
+        {
+            certificateName = "xeeny.test";
+            var subject = $"CN={certificateName}";
+            var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+            store.Open(OpenFlags.ReadOnly);
+            var certificates = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, subject, false);
+            if (certificates.Count == 0)
+            {
+                throw new Exception($"No certificates were found for subject: {subject}");
+            }
+
+            var x509Cert = certificates[0];
+
+            return x509Cert;
         }
     }
 }

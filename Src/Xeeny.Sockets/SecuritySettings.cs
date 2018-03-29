@@ -4,7 +4,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
-namespace Xeeny.Transports
+namespace Xeeny.Sockets
 {
     public class SecuritySettings
     {
