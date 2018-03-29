@@ -8,6 +8,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography.X509Certificates;
+using Xeeny.Transports;
 
 namespace Xeeny.ConsoleTest
 {
@@ -17,7 +19,8 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                await Profile(5000, SocketType.TCP, 1024 * 2);
+                //await SslTest();
+                await Profile(5000, SocketType.TCP, false, 1024 * 2);
                 //await EndToEndTest();
             }
             catch(Exception ex)
@@ -31,8 +34,15 @@ namespace Xeeny.ConsoleTest
         }
 
 
-        static async Task Profile(int count, SocketType socketType, int bufferSize)
+        static async Task Profile(int count, SocketType socketType, bool useSsl, int bufferSize)
         {
+            X509Certificate2 x509Cert = null;
+            string certName = null;
+            if(useSsl)
+            {
+                x509Cert = GetXeenyTestCertificate(out certName);
+            }
+
             var httpAddress = $"http://localhost/test";
             var tcpAddress = "tcp://localhost:9988";
 
@@ -48,12 +58,20 @@ namespace Xeeny.ConsoleTest
                 hostBuilder.AddWebSocketServer(httpAddress, options =>
                 {
                     options.ReceiveBufferSize = bufferSize;
+                    if(useSsl)
+                    {
+                        throw new NotImplementedException();
+                    }
                 });
 
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithWebSocketTransport(httpAddress, options =>
                                     {
                                         options.SendBufferSize = bufferSize;
+                                        if(useSsl)
+                                        {
+                                            throw new NotImplementedException();
+                                        }
                                     });
             }
             else if(socketType == SocketType.TCP)
@@ -61,12 +79,20 @@ namespace Xeeny.ConsoleTest
                 hostBuilder.AddTcpServer(tcpAddress, options =>
                 {
                     options.ReceiveBufferSize = bufferSize;
+                    if(useSsl)
+                    {
+                        options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
+                    }
                 });
 
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithTcpTransport(tcpAddress, options =>
                                     {
                                         options.SendBufferSize = bufferSize;
+                                        if(useSsl)
+                                        {
+                                            options.SecuritySettings = SecuritySettings.CreateForClient(certName);
+                                        }
                                     });
             }
 
@@ -99,6 +125,34 @@ namespace Xeeny.ConsoleTest
                 sw.Stop();
                 Console.WriteLine($">> {sw.ElapsedMilliseconds}");
             }
+        }
+
+        static async Task SslTest()
+        {
+            var x509Cert = GetXeenyTestCertificate(out string certName);
+
+            var tcpAddress = $"tcp://localhost:9999/tcpTest";
+
+            var host = new ServiceHostBuilder<Service>(InstanceMode.PerConnection)
+                            .AddTcpServer(tcpAddress, options =>
+                            {
+                                options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
+                            })
+                            .WithConsoleLogger(LogLevel.Trace)
+                            .CreateHost();
+            await host.Open();
+
+            var client = await new ConnectionBuilder<IService>()
+                               .WithTcpTransport(tcpAddress, options =>
+                               {
+                                   options.SecuritySettings = SecuritySettings.CreateForClient(certName);
+                               })
+                               .WithConsoleLogger(LogLevel.Trace)
+                               .CreateConnection();
+
+            var msg = await client.Echo("test");
+            Console.WriteLine(msg);
+            Console.WriteLine("Test Done!");
         }
 
         static async Task EndToEndTest()
@@ -183,6 +237,23 @@ namespace Xeeny.ConsoleTest
 
             //how to close connection, the listening will show exception that has no effect
             //await ((IConnection)client4).Close();
+        }
+
+        static X509Certificate2 GetXeenyTestCertificate(out string certificateName)
+        {
+            certificateName = "xeeny.test";
+            var subject = $"CN={certificateName}";
+            var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
+            store.Open(OpenFlags.ReadOnly);
+            var certificates = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, subject, false);
+            if (certificates.Count == 0)
+            {
+                throw new Exception($"No certificates were found for subject: {subject}");
+            }
+
+            var x509Cert = certificates[0];
+
+            return x509Cert;
         }
     }
 }

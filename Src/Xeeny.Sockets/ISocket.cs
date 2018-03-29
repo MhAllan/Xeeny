@@ -12,7 +12,6 @@ namespace Xeeny.Sockets
     public interface ISocket
     {
         bool Connected { get; }
-        Stream Stream { get; }
 
         Task ConnectAsServer(CancellationToken ct);
         Task ConnectAsClient(IPAddress ipAddress, int port, CancellationToken ct);

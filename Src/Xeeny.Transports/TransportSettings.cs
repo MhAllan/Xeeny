@@ -70,7 +70,5 @@ namespace Xeeny.Transports
         /// Connection name formatter, this is for logging. First argument is connection id.
         /// </summary>
         public ConnectionNameFormatter ConnectionNameFormatter { get; set; }
-
-        public readonly SecuritySettings SecuritySettings = new SecuritySettings();
     }
 }

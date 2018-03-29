@@ -12,21 +12,9 @@ namespace Xeeny.Sockets.TcpSockets
 {
     public class TcpSocket : ISocket
     {
-        public Stream Stream
-        {
-            get
-            {
-                if (_stream == null)
-                    _stream = new NetworkStream(_socket);
-
-                return _stream;
-            }
-        }
-
         public bool Connected => _socket.Connected;
 
         readonly Socket _socket;
-        NetworkStream _stream;
 
         public TcpSocket(Socket socket)
         {

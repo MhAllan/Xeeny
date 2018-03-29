@@ -54,8 +54,7 @@ namespace Xeeny.Sockets.TcpSockets
         public async Task<ITransport> AcceptSocket()
         {
             var socket = await _listener.AcceptSocketAsync();
-            var tcpSocket = new TcpSocket(socket);
-            return new TcpTransport(tcpSocket, _socketSettings, _loggerFactory);
+            return new TcpTransport(socket, _socketSettings, _loggerFactory);
         }
 
         public void Close()

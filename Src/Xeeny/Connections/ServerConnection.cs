@@ -34,10 +34,10 @@ namespace Xeeny.Connections
             _logger = logger;
         }
 
-        public override Task Connect()
+        public override async Task Connect()
         {
+            await this.Socket.Connect();
             this.Socket.Listen();
-            return Task.CompletedTask;
         }
 
         protected override async void OnRequestReceived(ITransport socket, Message message)

@@ -14,18 +14,20 @@ namespace Xeeny.Sockets.TcpSockets
         readonly IPAddress _remoteIP;
         readonly int _remotePort;
 
-        public TcpTransport(TcpSocket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public TcpTransport(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
             : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpTransport)))
         {
-            _socket = socket;
             var securitySettings = settings.SecuritySettings;
-            if (securitySettings.UseSsl)
+            if(securitySettings == null)
+            {
+                _socket = new TcpSocket(socket);
+            }
+            else
             {
                 var x509Certificate = securitySettings.X509Certificate;
-                var certName = securitySettings.CertificateName;
-                _socket = new SslSocket(_socket, x509Certificate, certName);
+                var validationCallback = securitySettings.ValidationCallback;
+                _socket = new SslSocket(socket, x509Certificate, validationCallback);
             }
-            SetState();
         }
 
         public TcpTransport(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
@@ -44,25 +46,16 @@ namespace Xeeny.Sockets.TcpSockets
 
             socket.NoDelay = true;
 
-            _socket = new TcpSocket(socket);
-
             var securitySettings = settings.SecuritySettings;
-            if (securitySettings.UseSsl)
+            if(securitySettings == null)
             {
-                var x509Certificate = securitySettings.X509Certificate;
-                var certName = securitySettings.CertificateName;
-                _socket = new SslSocket(_socket, x509Certificate, certName);
+                _socket = new TcpSocket(socket);
             }
-
-
-            SetState();
-        }
-
-        void SetState()
-        {
-            if (_socket.Connected)
+            else
             {
-                State = ConnectionState.Connected;
+                var certName = securitySettings.CertificateName;
+                var validationCallback = securitySettings.ValidationCallback;
+                _socket = new SslSocket(socket, certName, validationCallback);
             }
         }
 

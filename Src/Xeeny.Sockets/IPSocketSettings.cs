@@ -5,7 +5,7 @@ using Xeeny.Transports;
 
 namespace Xeeny.Sockets
 {
-    public class IPSocketSettings : TransportSettings
+    public class IPSocketSettings : SocketTransportSettings
     {
         public IPVersion IPVersion { get; set; }
 
