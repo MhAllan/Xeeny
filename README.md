@@ -416,7 +416,7 @@ Xeeny uses TLS 1.2 (over TCP only for now), you need to add `X509Certificate` to
 		})
 		...
 ```
-And on the client:
+And on the client you need to pass the `Certificate Name`:
 ```csharp
 await new ConnectionBuilder<IService>()
 		.WithTcpTransport(tcpAddress, options =>
