@@ -29,6 +29,7 @@ Cross Platform, Duplex, Scalable, Configurable, and Extendable
 	* [Connection Buffers](#connection-buffers)
    	* [Keep Alive Management](#keep-alive-management)
 * [Serialization](#serialization)
+* [Security](#security)
 * [Logging](#logging)
 * [Transports](#transports)
 * [Performance](#performance)
@@ -333,7 +334,8 @@ All builders expose connection options when you add Server or Transport. the opt
 * `SendBufferSize`: Sending buffer size (_default 4096 byte = 4 KB_)
 * `ReceiveBufferSize` : Receiving buffer size (_default 4096 byte = 4 KB_)
 * `MaxMessageSize`: Maximum size of messages (_default 1000000 byte = 1 MB_)
-* `ConnectionNameFormatter`: Delegate to set or format `ConnectionName` (_default is null_). (See [Logging](#logging))
+* `ConnectionNameFormatter`: Delegate to set or format `ConnectionName` (_default is null_). (see [Logging](#logging))
+* `SecuritySettings`: SSL settings (_default is null_) (see [Security](#security))
 
 You get these options configuration action on the server when you call AddXXXServer:
 
@@ -403,6 +405,27 @@ await host.Open();
 ```
 
 * You can also use your own serializer by implementing ISerializer and then calling `WithSerializer(ISerializer serializer)`
+
+## Security
+Xeeny uses TLS 1.2 (over TCP only for now), you need to add `X509Certificate` to the server
+```csharp
+ var host = new ServiceHostBuilder<Service>(...)
+ 		.AddTcpServer(tcpAddress, options =>
+		{
+			options.SecuritySettings = SecuritySettings.CreateForServer(x509Certificate2);
+		})
+		...
+```
+And on the client:
+```csharp
+await new ConnectionBuilder<IService>()
+		.WithTcpTransport(tcpAddress, options =>
+		{
+			options.SecuritySettings = SecuritySettings.CreateForClient(certificateName);
+		})
+		...
+```
+If you want to validate remote certificate you can pass the `RemoteCertificateValidationCallback` optional delegate to `SecuritySettings.CreateForClient`
 
 ## Logging
 Xeeny uses same logging system found in Asp.Net Core
