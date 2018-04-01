@@ -20,10 +20,10 @@ namespace Xeeny.Server
         public event Action<TService> ServiceInstanceCreated;
         public event Action<TService> SessionInstanceRemove;
 
-        public HostStatus Status { get; private set; } = HostStatus.Created;
+        public HostStatus State { get; private set; } = HostStatus.Created;
 
-        bool CanOpen => this.Status == HostStatus.Created || this.Status >= HostStatus.Closed;
-        bool CanClose => this.Status == HostStatus.Opened || this.Status == HostStatus.Openning;
+        bool CanOpen => this.State == HostStatus.Created || this.State >= HostStatus.Closed;
+        bool CanClose => this.State == HostStatus.Opened || this.State == HostStatus.Openning;
 
         CancellationTokenSource _cancellationSource = new CancellationTokenSource();
         CancellationToken cancellationToken => _cancellationSource.Token;
@@ -87,20 +87,20 @@ namespace Xeeny.Server
                 {
                     if (CanOpen)
                     {
-                        Status = HostStatus.Openning;
+                        State = HostStatus.Openning;
 
                         foreach(var listener in _listeners)
                         {
                             listener.Listen();
                         }
 
-                        Status = HostStatus.Opened;
+                        State = HostStatus.Opened;
 
                         StartAcceptingSockets();
                     }
                     else
                     {
-                        throw new Exception($"Can not open host with Status: {Status.ToString()}");
+                        throw new Exception($"Can not open host with Status: {State.ToString()}");
                     }
                 }
                 finally
@@ -110,7 +110,7 @@ namespace Xeeny.Server
             }
             else
             {
-                throw new Exception($"Can not open host with Status: {Status.ToString()}");
+                throw new Exception($"Can not open host with Status: {State.ToString()}");
             }
         }
 
@@ -124,7 +124,7 @@ namespace Xeeny.Server
 
         async void StartAcceptingSockets(IListener listener)
         {
-            while (this.Status == HostStatus.Opened && cancellationToken.IsCancellationRequested == false)
+            while (this.State == HostStatus.Opened && cancellationToken.IsCancellationRequested == false)
             {
                 try
                 {
@@ -134,7 +134,10 @@ namespace Xeeny.Server
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Could not accept socket");
+                    if (State <= HostStatus.Opened)
+                    {
+                        _logger.LogError(ex, "Could not accept socket");
+                    }
                 }
             }
         }
@@ -149,7 +152,7 @@ namespace Xeeny.Server
                 {
                     if (CanClose)
                     {
-                        Status = HostStatus.Closing;
+                        State = HostStatus.Closing;
 
                         if (_cancellationSource != null)
                         {
@@ -169,7 +172,7 @@ namespace Xeeny.Server
                 }
                 finally
                 {
-                    this.Status = HostStatus.Closed;
+                    this.State = HostStatus.Closed;
                     _lock.Release();
                 }
             }

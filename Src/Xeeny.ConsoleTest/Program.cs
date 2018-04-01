@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography.X509Certificates;
 using Xeeny.Transports;
+using Xeeny.Connections;
 
 namespace Xeeny.ConsoleTest
 {
@@ -152,6 +153,10 @@ namespace Xeeny.ConsoleTest
 
             var msg = await client.Echo("test");
             Console.WriteLine(msg);
+
+            await host.Close();
+            ((IConnection)client).Close();
+
             Console.WriteLine("Test Done!");
         }
 
@@ -235,8 +240,7 @@ namespace Xeeny.ConsoleTest
 
             await tcpCient.CallMeBack();
 
-            //how to close connection, the listening will show exception that has no effect
-            //await ((IConnection)client4).Close();
+            await Task.Delay(2000);
         }
 
         static X509Certificate2 GetXeenyTestCertificate(out string certificateName)
@@ -248,7 +252,7 @@ namespace Xeeny.ConsoleTest
             var certificates = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, subject, false);
             if (certificates.Count == 0)
             {
-                throw new Exception($"No certificates were found for subject: {subject}");
+                throw new Exception($"No certificates were found in store {StoreName.My.ToString()} for subject: {subject}");
             }
 
             var x509Cert = certificates[0];
