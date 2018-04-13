@@ -13,55 +13,69 @@ using Xeeny.Transports;
 
 namespace Xeeny.Sockets
 {
-    class SslSocket : ISocket
+    class SslSocketChannel : ITransportChannel
     {
-        public bool Connected => _socket.Connected;
-
         readonly Socket _socket;
-
-        SslStream _sslStream;
         readonly X509Certificate2 _x509Certificate;
         readonly string _certName;
         readonly RemoteCertificateValidationCallback _validationCallback;
+        readonly ConnectionSide _connectionSide;
+        readonly IPAddress _ipAddress;
+        readonly int _port;
 
-        public SslSocket(Socket socket, X509Certificate2 x509Certificate, RemoteCertificateValidationCallback validationCallback)
+        SslStream _sslStream;
+        public SslSocketChannel(Socket socket, X509Certificate2 x509Certificate, RemoteCertificateValidationCallback validationCallback)
         {
             _socket = socket;
             _x509Certificate = x509Certificate;
             _validationCallback = validationCallback;
+            _connectionSide = ConnectionSide.Server;
         }
 
-        public SslSocket(Socket socket, string certName, RemoteCertificateValidationCallback validationCallback)
+        public SslSocketChannel(Socket socket, IPAddress ipAddress, int port, string certName, RemoteCertificateValidationCallback validationCallback)
         {
             _socket = socket;
+            _ipAddress = ipAddress;
+            _port = port;
             _certName = certName;
             _validationCallback = validationCallback;
+            _connectionSide = ConnectionSide.Client;
         }
 
-        public async Task ConnectAsServer(CancellationToken ct)
+        public Task Connect(CancellationToken ct)
+        {
+            switch(_connectionSide)
+            {
+                case ConnectionSide.Server: return ConnectAsServer(ct);
+                case ConnectionSide.Client: return ConnectAsClient(ct);
+                default: throw new NotSupportedException(_connectionSide.ToString());
+            }
+        }
+
+        async Task ConnectAsServer(CancellationToken ct)
         {
             _sslStream = new SslStream(new NetworkStream(_socket), false, _validationCallback);
             await _sslStream.AuthenticateAsServerAsync(_x509Certificate, false, SslProtocols.Tls12, true);
         }
 
-        public async Task ConnectAsClient(IPAddress ipAddress, int port, CancellationToken ct)
+        public async Task ConnectAsClient(CancellationToken ct)
         {
-            await _socket.ConnectAsync(ipAddress, port);
+            await _socket.ConnectAsync(_ipAddress, _port);
             _sslStream = new SslStream(new NetworkStream(_socket), false, _validationCallback);
             await _sslStream.AuthenticateAsClientAsync(_certName, null, SslProtocols.Tls12, false);
         }
 
-        public Task SendAsync(ArraySegment<byte> segment, SocketFlags flags, CancellationToken ct)
+        public Task SendAsync(ArraySegment<byte> segment, CancellationToken ct)
         {
             return _sslStream.WriteAsync(segment.Array, segment.Offset, segment.Count, ct);
         }
 
-        public Task<int> ReceiveAsync(ArraySegment<byte> segment, SocketFlags flags, CancellationToken ct)
+        public Task<int> ReceiveAsync(ArraySegment<byte> segment, CancellationToken ct)
         {
             return _sslStream.ReadAsync(segment.Array, segment.Offset, segment.Count, ct);
         }
 
-        public void Close()
+        public void Close(CancellationToken ct)
         {
             try
             {

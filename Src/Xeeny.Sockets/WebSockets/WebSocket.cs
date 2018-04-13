@@ -11,20 +11,21 @@ using Xeeny.Transports;
 
 namespace Xeeny.Sockets.WebSockets
 {
-    public class WebSocket : SequentialStreamTransport
+    public class WebSocket : TransportBase
     {
+
         System.Net.WebSockets.WebSocket _webSocket;
         Uri _uri;
 
         public WebSocket(System.Net.WebSockets.WebSocket socket, TransportSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(WebSocket)))
+            : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = socket;
             SetState();
         }
 
         public WebSocket(Uri uri, TransportSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(WebSocket)))
+            : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = new System.Net.WebSockets.ClientWebSocket();
             _uri = uri;
@@ -66,19 +67,19 @@ namespace Xeeny.Sockets.WebSockets
             catch { }
         }
 
-        protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
-        {
-            await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, ct)
-                            .ConfigureAwait(false);
-        }
+        //protected override async Task Send(ArraySegment<byte> segment, CancellationToken ct)
+        //{
+        //    await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, ct)
+        //                    .ConfigureAwait(false);
+        //}
 
-        protected override async Task<int> Receive(ArraySegment<byte> segment, CancellationToken ct)
-        {
-            var result = await _webSocket.ReceiveAsync(segment, ct)
-                                        .ConfigureAwait(false);
+        //protected override async Task<int> Receive(ArraySegment<byte> segment, CancellationToken ct)
+        //{
+        //    var result = await _webSocket.ReceiveAsync(segment, ct)
+        //                                .ConfigureAwait(false);
             
-            return result.Count;
-        }
+        //    return result.Count;
+        //}
 
         protected override void OnKeepAlivedReceived(Message message)
         {
@@ -88,6 +89,16 @@ namespace Xeeny.Sockets.WebSockets
         protected override void OnAgreementReceived(Message message)
         {
             //nothing
+        }
+
+        protected override Task SendMessage(Message message, CancellationToken ct)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Task<Message> ReceiveMessage(CancellationToken ct)
+        {
+            throw new NotImplementedException();
         }
     }
 }

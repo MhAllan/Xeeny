@@ -139,7 +139,7 @@ namespace Xeeny.ConsoleTest
                             {
                                 options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
                             })
-                            .WithConsoleLogger(LogLevel.Trace)
+                            .WithConsoleLogger(LogLevel.None)
                             .CreateHost();
             await host.Open();
 
@@ -148,7 +148,7 @@ namespace Xeeny.ConsoleTest
                                {
                                    options.SecuritySettings = SecuritySettings.CreateForClient(certName);
                                })
-                               .WithConsoleLogger(LogLevel.Trace)
+                               .WithConsoleLogger(LogLevel.None)
                                .CreateConnection();
 
             var msg = await client.Echo("test");

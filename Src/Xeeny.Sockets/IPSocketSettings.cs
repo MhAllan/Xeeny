@@ -8,6 +8,7 @@ namespace Xeeny.Sockets
     public class IPSocketSettings : SocketTransportSettings
     {
         public IPVersion IPVersion { get; set; }
+        public bool AllowConcurrentMessages { get; set; }
 
         public IPSocketSettings()
         {

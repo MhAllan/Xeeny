@@ -12,7 +12,6 @@ namespace Xeeny.Transports
     {
         public string ConnectionId => _id;
         public string ConnectionName => _connectionName;
-        public ConnectionSide ConnectionSide => _connectionSide;
 
         public event Action<ITransport, Message> RequestReceived;
         public event Action<IConnectionObject> StateChanged;
@@ -45,11 +44,10 @@ namespace Xeeny.Transports
 
         readonly string _id;
         readonly string _connectionName;
-        readonly ConnectionSide _connectionSide;
 
         readonly ILogger _logger;
 
-        public TransportBase(TransportSettings settings, ConnectionSide connectionSide, ILogger logger)
+        public TransportBase(TransportSettings settings, ILogger logger)
         {
             
             _timeout = settings.Timeout.TotalMilliseconds;
@@ -62,7 +60,6 @@ namespace Xeeny.Transports
             _id = Guid.NewGuid().ToString();
             var nameFormatter = settings.ConnectionNameFormatter;
             _connectionName = nameFormatter == null ? $"Connection ({_id})" : nameFormatter(_id);
-            _connectionSide = connectionSide;
 
             _logger = logger;
         }

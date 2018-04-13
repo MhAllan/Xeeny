@@ -8,21 +8,26 @@ using System.Threading.Tasks;
 
 namespace Xeeny.Transports
 {
-    public abstract class SequentialStreamTransport : TransportBase
+    public class SequentialStreamTransport : IMessageChannel
     {
-        const byte _sizeIndex = 0; //4 bytes ing
+        const byte _sizeIndex = 0; //4 bytes int
         const byte _messageTypeIndex = 4; //1 byte flag
         const byte _idIndex = 5; //16 bytes guid
         const byte _payloadIndex = 21;
 
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        readonly ITransportChannel _transportChannel;
         readonly int _minMessageSize = _payloadIndex;
         readonly int _maxMessageSize;
         readonly int _receiveBufferSize;
         readonly int _sendBufferSize;
 
-        public SequentialStreamTransport(TransportSettings settings, ConnectionSide connectionSide, ILogger logger)
-            : base(settings, connectionSide, logger)
+        public Task Connect(CancellationToken ct)
+        {
+            return _transportChannel.Connect(ct);
+        }
+
+        public SequentialStreamTransport(ITransportChannel channel, TransportSettings settings)
         {
             var maxMessageSize = settings.MaxMessageSize;
             var sendBufferSize = settings.SendBufferSize;
@@ -44,6 +49,7 @@ namespace Xeeny.Transports
                     $"then {_minMessageSize}");
             }
 
+            _transportChannel = channel;
             _maxMessageSize = maxMessageSize;
             _sendBufferSize = sendBufferSize;
             _receiveBufferSize = receiveBufferSize;
@@ -52,10 +58,7 @@ namespace Xeeny.Transports
             _sendBufferSize = settings.SendBufferSize;
         }
 
-        protected abstract Task Send(ArraySegment<byte> segment, CancellationToken ct);
-        protected abstract Task<int> Receive(ArraySegment<byte> segment, CancellationToken ct);
-
-        protected override async Task SendMessage(Message message, CancellationToken ct)
+        public async Task SendMessage(Message message, CancellationToken ct)
         {
             var msgSize = _minMessageSize;
             var payloadSize = 0;
@@ -87,7 +90,7 @@ namespace Xeeny.Transports
                     var left = msgSize - offset;
                     var next = Math.Min(_sendBufferSize, left);
                     var segment = new ArraySegment<byte>(buffer, offset, next);
-                    await Send(segment, ct);
+                    await _transportChannel.SendAsync(segment, ct);
 
                     offset += next;
                 }
@@ -103,7 +106,7 @@ namespace Xeeny.Transports
             }
         }
 
-        protected override async Task<Message> ReceiveMessage(CancellationToken ct)
+        public async Task<Message> ReceiveMessage(CancellationToken ct)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
@@ -116,7 +119,7 @@ namespace Xeeny.Transports
                     var len = msgSize == -1 ? 4 : msgSize - read;
                     var segment = new ArraySegment<byte>(buffer, read, len);
 
-                    read += await Receive(segment, ct);
+                    read += await _transportChannel.ReceiveAsync(segment, ct);
                     if (msgSize == -1 && read >= 4)
                     {
                         msgSize = BitConverter.ToInt32(buffer, 0);
@@ -139,6 +142,8 @@ namespace Xeeny.Transports
 
                 }
 
+                ct.ThrowIfCancellationRequested();
+
                 var msgType = (MessageType)buffer[_messageTypeIndex];
                 var id = new Guid(BufferHelper.GetSubArray(buffer, _idIndex, 16));
                 byte[] payload = null;
@@ -156,5 +161,9 @@ namespace Xeeny.Transports
             }
         }
 
+        public void Close(CancellationToken ct)
+        {
+            _transportChannel.Close(ct);
+        }
     }
 }
