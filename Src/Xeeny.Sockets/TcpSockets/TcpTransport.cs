@@ -13,7 +13,7 @@ namespace Xeeny.Sockets.TcpSockets
         readonly IMessageChannel _channel;
 
         public TcpTransport(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base (settings, loggerFactory.CreateLogger(nameof(TcpTransport)))
+            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpTransport)))
         {
             ITransportChannel transportChannel = null;
             var securitySettings = settings.SecuritySettings;
@@ -40,7 +40,7 @@ namespace Xeeny.Sockets.TcpSockets
         }
 
         public TcpTransport(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, loggerFactory.CreateLogger(nameof(TcpTransport)))
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(TcpTransport)))
         {
             var ip = SocketTools.GetIP(uri, settings.IPVersion);
             var port = uri.Port;
@@ -60,7 +60,7 @@ namespace Xeeny.Sockets.TcpSockets
             var securitySettings = settings.SecuritySettings;
             if(securitySettings == null)
             {
-                transportChannel = new TcpSocketChannel(socket, SocketFlags.None);
+                transportChannel = new TcpSocketChannel(socket, ip, port, SocketFlags.None);
             }
             else
             {

@@ -18,14 +18,14 @@ namespace Xeeny.Sockets.WebSockets
         Uri _uri;
 
         public WebSocket(System.Net.WebSockets.WebSocket socket, TransportSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
+            : base(settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = socket;
             SetState();
         }
 
         public WebSocket(Uri uri, TransportSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, loggerFactory.CreateLogger(nameof(WebSocket)))
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(WebSocket)))
         {
             _webSocket = new System.Net.WebSockets.ClientWebSocket();
             _uri = uri;

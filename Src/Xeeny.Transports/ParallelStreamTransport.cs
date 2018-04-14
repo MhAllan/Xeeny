@@ -157,7 +157,7 @@ namespace Xeeny.Transports
                     var totalMessageSize = BitConverter.ToInt32(buffer, _totalSizeIndex);
                     var id = new Guid(BufferHelper.GetSubArray(buffer, _idIndex, 16));
 
-                    if (totalMessageSize == _receiveBufferSize)
+                    if (totalMessageSize <= _receiveBufferSize)
                     {
                         return GetMessageFromBuffer(buffer, totalMessageSize, id);
                     }

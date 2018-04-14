@@ -20,8 +20,8 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
-                await SslTest();
-                //await Profile(5000, SocketType.TCP, false, 1024 * 2);
+                //await SslTest();
+                await Profile(5000, SocketType.TCP, false, 1024 * 2);
                 //await EndToEndTest();
             }
             catch(Exception ex)
@@ -138,8 +138,9 @@ namespace Xeeny.ConsoleTest
                             .AddTcpServer(tcpAddress, options =>
                             {
                                 options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
+                                //options.AllowConcurrentMessages = true;
                             })
-                            .WithConsoleLogger(LogLevel.None)
+                            .WithConsoleLogger(LogLevel.Trace)
                             .CreateHost();
             await host.Open();
 
@@ -147,6 +148,7 @@ namespace Xeeny.ConsoleTest
                                .WithTcpTransport(tcpAddress, options =>
                                {
                                    options.SecuritySettings = SecuritySettings.CreateForClient(certName);
+                                   //options.AllowConcurrentMessages = true;
                                })
                                .WithConsoleLogger(LogLevel.None)
                                .CreateConnection();
