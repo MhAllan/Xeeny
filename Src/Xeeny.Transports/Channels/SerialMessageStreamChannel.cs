@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Xeeny.Transports.Channels
 {
-    public class SequentialStreamTransport : IMessageChannel
+    public class SerialMessageStreamChannel : IMessageChannel
     {
         const byte _sizeIndex = 0; //4 bytes int
         const byte _messageTypeIndex = 4; //1 byte flag
@@ -30,7 +30,7 @@ namespace Xeeny.Transports.Channels
             return _transportChannel.Connect(ct);
         }
 
-        public SequentialStreamTransport(ITransportChannel channel, TransportSettings settings)
+        public SerialMessageStreamChannel(ITransportChannel channel, TransportSettings settings)
         {
             var maxMessageSize = settings.MaxMessageSize;
             var sendBufferSize = settings.SendBufferSize;

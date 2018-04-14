@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Xeeny.Transports.Channels
 {
-    public class ParallelStreamTransport : IMessageChannel
+    public class ConcurrentMessageStreamChannel : IMessageChannel
     {
         const byte _totalSizeIndex = 0; //4 bytes int
         const byte _sizeIndex = 4; //4 bytes int
@@ -30,7 +30,7 @@ namespace Xeeny.Transports.Channels
 
         readonly MessageAssemblerManager _assemblerManager;
 
-        public ParallelStreamTransport(ITransportChannel channel, TransportSettings settings)
+        public ConcurrentMessageStreamChannel(ITransportChannel channel, TransportSettings settings)
         {
             var maxMessageSize = settings.MaxMessageSize;
             var sendBufferSize = settings.SendBufferSize;

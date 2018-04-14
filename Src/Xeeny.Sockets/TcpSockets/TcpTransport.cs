@@ -32,11 +32,11 @@ namespace Xeeny.Sockets.TcpSockets
             var allowConcurrentMessages = settings.AllowConcurrentMessages;
             if(allowConcurrentMessages)
             {
-                _channel = new ParallelStreamTransport(transportChannel, settings);
+                _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
             }
             else
             {
-                _channel = new SequentialStreamTransport(transportChannel, settings);
+                _channel = new SerialMessageStreamChannel(transportChannel, settings);
             }
         }
 
@@ -73,11 +73,11 @@ namespace Xeeny.Sockets.TcpSockets
             var allowConcurrentMessages = settings.AllowConcurrentMessages;
             if (allowConcurrentMessages)
             {
-                _channel = new ParallelStreamTransport(transportChannel, settings);
+                _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
             }
             else
             {
-                _channel = new SequentialStreamTransport(transportChannel, settings);
+                _channel = new SerialMessageStreamChannel(transportChannel, settings);
             }
         }
 
