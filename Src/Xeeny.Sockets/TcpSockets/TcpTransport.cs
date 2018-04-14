@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Xeeny.Transports;
+using Xeeny.Transports.Channels;
 
 namespace Xeeny.Sockets.TcpSockets
 {
@@ -19,13 +20,13 @@ namespace Xeeny.Sockets.TcpSockets
             var securitySettings = settings.SecuritySettings;
             if(securitySettings == null)
             {
-                transportChannel = new TcpSocketChannel(socket, SocketFlags.None);
+                transportChannel = new TcpSocketChannel(socket, SocketFlags.None, this.ConnectionName);
             }
             else
             {
                 var x509Certificate = securitySettings.X509Certificate;
                 var validationCallback = securitySettings.ValidationCallback;
-                transportChannel = new SslSocketChannel(socket, x509Certificate, validationCallback);
+                transportChannel = new SslSocketChannel(socket, x509Certificate, validationCallback, this.ConnectionName);
             }
 
             var allowConcurrentMessages = settings.AllowConcurrentMessages;
@@ -60,13 +61,13 @@ namespace Xeeny.Sockets.TcpSockets
             var securitySettings = settings.SecuritySettings;
             if(securitySettings == null)
             {
-                transportChannel = new TcpSocketChannel(socket, ip, port, SocketFlags.None);
+                transportChannel = new TcpSocketChannel(socket, ip, port, SocketFlags.None, this.ConnectionName);
             }
             else
             {
                 var certName = securitySettings.CertificateName;
                 var validationCallback = securitySettings.ValidationCallback;
-                transportChannel = new SslSocketChannel(socket, ip, port, certName, validationCallback);
+                transportChannel = new SslSocketChannel(socket, ip, port, certName, validationCallback, this.ConnectionName);
             }
 
             var allowConcurrentMessages = settings.AllowConcurrentMessages;

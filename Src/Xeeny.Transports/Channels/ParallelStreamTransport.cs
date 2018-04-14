@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Xeeny.Transports
+namespace Xeeny.Transports.Channels
 {
     public class ParallelStreamTransport : IMessageChannel
     {
@@ -17,7 +17,10 @@ namespace Xeeny.Transports
         const byte _idIndex = 9; //16 bytes guid
         const byte _payloadIndex = 25;
 
-        readonly ITransportChannel _channel;
+        public ConnectionSide ConnectionSide => _transportChannel.ConnectionSide;
+        public string ConnectionName => _transportChannel.ConnectionName;
+
+        readonly ITransportChannel _transportChannel;
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         readonly int _minMessageSize = _payloadIndex;
         readonly int _maxMessageSize;
@@ -49,7 +52,7 @@ namespace Xeeny.Transports
                     $"then {_minMessageSize}");
             }
 
-            _channel = channel;
+            _transportChannel = channel;
             _maxMessageSize = maxMessageSize;
             _sendBufferSize = sendBufferSize;
             _receiveBufferSize = receiveBufferSize;
@@ -63,7 +66,7 @@ namespace Xeeny.Transports
 
         public Task Connect(CancellationToken ct)
         {
-            return _channel.Connect(ct);
+            return _transportChannel.Connect(ct);
         }
 
         public async Task SendMessage(Message message, CancellationToken ct)
@@ -98,7 +101,7 @@ namespace Xeeny.Transports
                     await _sendLock.WaitAsync();
                     try
                     {
-                        await _channel.SendAsync(segment, ct);
+                        await _transportChannel.SendAsync(segment, ct);
                     }
                     finally
                     {
@@ -129,7 +132,7 @@ namespace Xeeny.Transports
                         var len = msgSize == -1 ? 4 : msgSize - read;
                         var segment = new ArraySegment<byte>(buffer, read, len);
 
-                        read += await _channel.ReceiveAsync(segment, ct);
+                        read += await _transportChannel.ReceiveAsync(segment, ct);
                         if (msgSize == -1 && read >= 8)
                         {
                             msgSize = BitConverter.ToInt32(buffer, _sizeIndex);
@@ -194,7 +197,7 @@ namespace Xeeny.Transports
         public void Close(CancellationToken ct)
         {
             _assemblerManager.Dispose();
-            _channel.Close(ct);
+            _transportChannel.Close(ct);
         }
     }
 }

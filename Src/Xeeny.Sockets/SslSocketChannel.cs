@@ -10,35 +10,43 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xeeny.Transports;
+using Xeeny.Transports.Channels;
 
 namespace Xeeny.Sockets
 {
     class SslSocketChannel : ITransportChannel
     {
+        public ConnectionSide ConnectionSide => _connectionSide;
+        public string ConnectionName => _connectionName;
+
         readonly Socket _socket;
         readonly X509Certificate2 _x509Certificate;
         readonly string _certName;
         readonly RemoteCertificateValidationCallback _validationCallback;
-        readonly ConnectionSide _connectionSide;
         readonly IPAddress _ipAddress;
         readonly int _port;
 
+        readonly ConnectionSide _connectionSide;
+        readonly string _connectionName;
+
         SslStream _sslStream;
-        public SslSocketChannel(Socket socket, X509Certificate2 x509Certificate, RemoteCertificateValidationCallback validationCallback)
+        public SslSocketChannel(Socket socket, X509Certificate2 x509Certificate, RemoteCertificateValidationCallback validationCallback, string connectionName)
         {
             _socket = socket;
             _x509Certificate = x509Certificate;
             _validationCallback = validationCallback;
+            _connectionName = connectionName;
             _connectionSide = ConnectionSide.Server;
         }
 
-        public SslSocketChannel(Socket socket, IPAddress ipAddress, int port, string certName, RemoteCertificateValidationCallback validationCallback)
+        public SslSocketChannel(Socket socket, IPAddress ipAddress, int port, string certName, RemoteCertificateValidationCallback validationCallback, string connectionName)
         {
             _socket = socket;
             _ipAddress = ipAddress;
             _port = port;
             _certName = certName;
             _validationCallback = validationCallback;
+            _connectionName = connectionName;
             _connectionSide = ConnectionSide.Client;
         }
 

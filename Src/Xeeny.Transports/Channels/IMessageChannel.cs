@@ -4,15 +4,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Xeeny.Transports
+namespace Xeeny.Transports.Channels
 {
-    public interface IMessageChannel
+    public interface IMessageChannel : IConnectChannel
     {
-        Task Connect(CancellationToken ct);
-
         Task SendMessage(Message message, CancellationToken ct);
         Task<Message> ReceiveMessage(CancellationToken ct);
-
-        void Close(CancellationToken ct);
     }
 }

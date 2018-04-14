@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Xeeny.Transports
+namespace Xeeny.Transports.Channels
 {
     public class SequentialStreamTransport : IMessageChannel
     {
@@ -14,6 +14,9 @@ namespace Xeeny.Transports
         const byte _messageTypeIndex = 4; //1 byte flag
         const byte _idIndex = 5; //16 bytes guid
         const byte _payloadIndex = 21;
+
+        public ConnectionSide ConnectionSide => _transportChannel.ConnectionSide;
+        public string ConnectionName => _transportChannel.ConnectionName;
 
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         readonly ITransportChannel _transportChannel;

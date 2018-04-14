@@ -6,15 +6,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Xeeny.Transports
+namespace Xeeny.Transports.Channels
 {
-    public interface ITransportChannel
+    public interface ITransportChannel : IConnectChannel
     {
-        Task Connect(CancellationToken ct);
-
         Task SendAsync(ArraySegment<byte> segment, CancellationToken ct);
         Task<int> ReceiveAsync(ArraySegment<byte> segment, CancellationToken ct);
-
-        void Close(CancellationToken ct);
     }
 }

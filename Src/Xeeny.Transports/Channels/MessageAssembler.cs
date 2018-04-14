@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Xeeny.Transports
+namespace Xeeny.Transports.Channels
 {
     class MessageAssembler : IDisposable
     {
