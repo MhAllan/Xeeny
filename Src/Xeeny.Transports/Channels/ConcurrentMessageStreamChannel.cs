@@ -32,8 +32,7 @@ namespace Xeeny.Transports.Channels
         readonly int _availablePayloadSize;
 
         readonly long _receiveTimeoutMS;
-        ConcurrentDictionary<Guid, StreamMessageAssembler> _assemblers = 
-            new ConcurrentDictionary<Guid, StreamMessageAssembler>();
+        Dictionary<Guid, StreamMessageAssembler> _assemblers = new Dictionary<Guid, StreamMessageAssembler>();
         readonly Timer _assemblersCleanTimer;
 
         public ConcurrentMessageStreamChannel(ITransportChannel channel, TransportSettings settings)
@@ -185,7 +184,7 @@ namespace Xeeny.Transports.Channels
                         if (!_assemblers.TryGetValue(msgId, out var assembler))
                         {
                             assembler = new StreamMessageAssembler(msgId, msgSize);
-                            _assemblers.TryAdd(msgId, assembler);
+                            _assemblers.Add(msgId, assembler);
                         }
                         else
                         {
@@ -231,7 +230,7 @@ namespace Xeeny.Transports.Channels
         void DisposeAssembler(StreamMessageAssembler assembler)
         {
             assembler.Dispose();
-            _assemblers.TryRemove(assembler.MessageId, out var _);
+            _assemblers.Remove(assembler.MessageId);
         }
 
         public void Close(CancellationToken ct)
