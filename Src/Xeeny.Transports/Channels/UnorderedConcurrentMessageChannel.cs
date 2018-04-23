@@ -130,12 +130,14 @@ namespace Xeeny.Transports.Channels
             var buffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
             {
-                while (!ct.IsCancellationRequested)
+                while (true)
                 {
+                    ct.ThrowIfCancellationRequested();
+
                     var read = 0;
                     var partialMsgSize = -1;
                     var msgSize = 0;
-                    while (!ct.IsCancellationRequested && (partialMsgSize == -1 || read < partialMsgSize))
+                    while (partialMsgSize == -1 || read < partialMsgSize)
                     {
                         var len = partialMsgSize == -1 ? 8 : partialMsgSize - read;
                         var segment = new ArraySegment<byte>(buffer, read, len);
@@ -162,9 +164,9 @@ namespace Xeeny.Transports.Channels
                             }
                         }
 
-                    }
+                        ct.ThrowIfCancellationRequested();
 
-                    ct.ThrowIfCancellationRequested();
+                    }
 
                     var msgId = new Guid(BufferHelper.GetSubArray(buffer, _msgIdIndex, 16));
                     if (msgSize == partialMsgSize - _msgSizeIndex)
@@ -210,7 +212,6 @@ namespace Xeeny.Transports.Channels
                         }
                     }
                 }
-                throw new TaskCanceledException();
             }
             finally
             {

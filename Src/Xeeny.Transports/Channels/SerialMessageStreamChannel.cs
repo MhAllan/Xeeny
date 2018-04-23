@@ -117,7 +117,7 @@ namespace Xeeny.Transports.Channels
                 var read = 0;
                 var msgSize = -1;
 
-                while (!ct.IsCancellationRequested && (msgSize == -1 || read < msgSize))
+                while (msgSize == -1 || read < msgSize)
                 {
                     var len = msgSize == -1 ? 4 : msgSize - read;
                     var segment = new ArraySegment<byte>(buffer, read, len);
@@ -143,9 +143,8 @@ namespace Xeeny.Transports.Channels
                         }
                     }
 
+                    ct.ThrowIfCancellationRequested();
                 }
-
-                ct.ThrowIfCancellationRequested();
 
                 var msgType = (MessageType)buffer[_messageTypeIndex];
                 var id = new Guid(BufferHelper.GetSubArray(buffer, _idIndex, 16));
