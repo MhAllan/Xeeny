@@ -15,6 +15,12 @@ namespace Xeeny.Sockets
         /// If messages are fragmented (SendBufferSize is smaller than message) this option will send message parts in concurrent way, concurrent method calls can interleave
         /// <para>Server and Client should have same FramingProtocol</para>
         /// </summary>
-        ConcurrentFragments
+        ConcurrentFragments,
+        /// <summary>
+        /// If messages are fragmented (SendBufferSize is smaller than message or UDP or IP) this option will send message parts in concurrent way, concurrent method calls can interleave
+        /// <para>Server and Client should have same FramingProtocol</para>
+        /// <para>UDP and IP must use this option</para>
+        /// </summary>
+        UnorderedConcurrentFragments
     }
 }

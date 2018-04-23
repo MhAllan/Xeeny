@@ -42,6 +42,11 @@ namespace Xeeny.Sockets.TcpSockets
                         _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
                         break;
                     }
+                case FramingProtocol.UnorderedConcurrentFragments:
+                    {
+                        _channel = new UnorderedConcurrentMessageChannel(transportChannel, settings);
+                        break;
+                    }
                 default: throw new NotSupportedException(framingProtocol.ToString());
             }
         }
@@ -87,6 +92,11 @@ namespace Xeeny.Sockets.TcpSockets
                 case FramingProtocol.ConcurrentFragments:
                     {
                         _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
+                        break;
+                    }
+                case FramingProtocol.UnorderedConcurrentFragments:
+                    {
+                        _channel = new UnorderedConcurrentMessageChannel(transportChannel, settings);
                         break;
                     }
                 default: throw new NotSupportedException(framingProtocol.ToString());

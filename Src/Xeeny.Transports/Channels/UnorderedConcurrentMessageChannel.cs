@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,13 +8,14 @@ using System.Threading.Tasks;
 
 namespace Xeeny.Transports.Channels
 {
-    public class ConcurrentMessageStreamChannel : IMessageChannel
+    public class UnorderedConcurrentMessageChannel : IMessageChannel
     {
         const byte _partialMsgSizeIndex = 0; //4 bytes int
         const byte _msgSizeIndex = 4; //4 bytes int
         const byte _partialMsgTypeIndex = 8; //1 byte flag
-        const byte _idIndex = 9; //16 bytes guid
-        const byte _partialPayloadIndex = 25;
+        const byte _msgIdIndex = 9; //16 bytes guid
+        const byte _fragmentIdIndex = 25; //4 bytes int
+        const byte _partialPayloadIndex = 29;
         const byte _msgTypeIndex = _partialMsgTypeIndex - _msgSizeIndex;
         const byte _payloadIndex = _partialPayloadIndex - _msgSizeIndex;
 
@@ -32,11 +32,11 @@ namespace Xeeny.Transports.Channels
         readonly int _availablePayloadSize;
 
         readonly long _receiveTimeoutMS;
-        ConcurrentDictionary<Guid, StreamMessageAssembler> _assemblers = 
-            new ConcurrentDictionary<Guid, StreamMessageAssembler>();
+        ConcurrentDictionary<Guid, UnorderedFragmentMessageAssembler> _assemblers =
+            new ConcurrentDictionary<Guid, UnorderedFragmentMessageAssembler>();
         readonly Timer _assemblersCleanTimer;
 
-        public ConcurrentMessageStreamChannel(ITransportChannel channel, TransportSettings settings)
+        public UnorderedConcurrentMessageChannel(ITransportChannel channel, TransportSettings settings)
         {
             var maxMessageSize = settings.MaxMessageSize;
             var sendBufferSize = settings.SendBufferSize;
@@ -66,7 +66,7 @@ namespace Xeeny.Transports.Channels
             _receiveBufferSize = settings.ReceiveBufferSize;
             _sendBufferSize = settings.SendBufferSize;
             _availablePayloadSize = _sendBufferSize - _minPartialMsgSize;
-            
+
             _receiveTimeoutMS = settings.ReceiveTimeout.TotalMilliseconds;
             _assemblersCleanTimer = new Timer(CleanAssemblers, null, 0, _receiveTimeoutMS);
         }
@@ -98,8 +98,9 @@ namespace Xeeny.Transports.Channels
 
                     BufferHelper.CopyToIndex(BitConverter.GetBytes(partialMsgSize), buffer, _partialMsgSizeIndex);
                     BufferHelper.CopyToIndex(BitConverter.GetBytes(msgSize), buffer, _msgSizeIndex);
+                    BufferHelper.CopyToIndex(BitConverter.GetBytes(payloadIndex), buffer, _fragmentIdIndex);
                     buffer[_partialMsgTypeIndex] = (byte)message.MessageType;
-                    BufferHelper.CopyToIndex(message.Id.ToByteArray(), buffer, _idIndex);
+                    BufferHelper.CopyToIndex(message.Id.ToByteArray(), buffer, _msgIdIndex);
                     if (partialPayloadSize > 0)
                     {
                         Buffer.BlockCopy(payload, payloadIndex, buffer, _partialPayloadIndex, partialPayloadSize);
@@ -129,7 +130,7 @@ namespace Xeeny.Transports.Channels
             var buffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
             {
-                while(!ct.IsCancellationRequested)
+                while (!ct.IsCancellationRequested)
                 {
                     var read = 0;
                     var partialMsgSize = -1;
@@ -165,7 +166,7 @@ namespace Xeeny.Transports.Channels
 
                     ct.ThrowIfCancellationRequested();
 
-                    var msgId = new Guid(BufferHelper.GetSubArray(buffer, _idIndex, 16));
+                    var msgId = new Guid(BufferHelper.GetSubArray(buffer, _msgIdIndex, 16));
                     if (msgSize == partialMsgSize - _msgSizeIndex)
                     {
                         var msgType = (MessageType)buffer[_partialMsgTypeIndex];
@@ -183,7 +184,7 @@ namespace Xeeny.Transports.Channels
                         var nextIndex = _msgSizeIndex;
                         if (!_assemblers.TryGetValue(msgId, out var assembler))
                         {
-                            assembler = new StreamMessageAssembler(msgId, msgSize);
+                            assembler = new UnorderedFragmentMessageAssembler(msgId, msgSize);
                             _assemblers.TryAdd(msgId, assembler);
                         }
                         else
@@ -191,7 +192,8 @@ namespace Xeeny.Transports.Channels
                             nextIndex = _partialPayloadIndex;
                         }
                         var nextSegment = new ArraySegment<byte>(buffer, nextIndex, partialMsgSize - nextIndex);
-                        if(assembler.AddPartialMessage(nextSegment))
+                        var fragmentId = BitConverter.ToInt32(buffer, _fragmentIdIndex);
+                        if (assembler.AddPartialMessage(fragmentId, nextSegment))
                         {
                             var msgBuffer = assembler.GetMessage();
                             var msgType = (MessageType)msgBuffer[_msgTypeIndex];
@@ -205,7 +207,7 @@ namespace Xeeny.Transports.Channels
                             var msg = new Message(msgType, msgId, payload);
                             DisposeAssembler(assembler);
                             return msg;
-                        }                        
+                        }
                     }
                 }
                 throw new TaskCanceledException();
@@ -228,7 +230,7 @@ namespace Xeeny.Transports.Channels
             }
         }
 
-        void DisposeAssembler(StreamMessageAssembler assembler)
+        void DisposeAssembler(UnorderedFragmentMessageAssembler assembler)
         {
             assembler.Dispose();
             _assemblers.TryRemove(assembler.MessageId, out var _);

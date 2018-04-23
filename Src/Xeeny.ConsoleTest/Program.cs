@@ -25,7 +25,7 @@ namespace Xeeny.ConsoleTest
                 var small = 600;
                 var big = 1024 * 2;
                 var framing = FramingProtocol.SerialFragments;
-                await Profile(5000, SocketType.TCP, false, big, big, big, big, framing);
+                await Profile(5000, SocketType.TCP, false, small, big, small, big, framing);
                 //await EndToEndTest();
             }
             catch(Exception ex)
