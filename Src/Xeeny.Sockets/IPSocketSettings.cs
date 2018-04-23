@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Xeeny.Transports;
 
 namespace Xeeny.Sockets
 {
     public class IPSocketSettings : SocketTransportSettings
     {
         public IPVersion IPVersion { get; set; }
-        public bool AllowConcurrentMessages { get; set; }
+        /// <summary>
+        /// Message Framing Protocol
+        /// </summary>
+        public FramingProtocol FramingProtocol { get; set; }
 
         public IPSocketSettings()
         {

@@ -29,14 +29,20 @@ namespace Xeeny.Sockets.TcpSockets
                 transportChannel = new SslSocketChannel(socket, x509Certificate, validationCallback, this.ConnectionName);
             }
 
-            var allowConcurrentMessages = settings.AllowConcurrentMessages;
-            if(allowConcurrentMessages)
+            var framingProtocol = settings.FramingProtocol;
+            switch(framingProtocol)
             {
-                _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
-            }
-            else
-            {
-                _channel = new SerialMessageStreamChannel(transportChannel, settings);
+                case FramingProtocol.SerialFragments:
+                    {
+                        _channel = new SerialMessageStreamChannel(transportChannel, settings);
+                        break;
+                    }
+                case FramingProtocol.ConcurrentFragments:
+                    {
+                        _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
+                        break;
+                    }
+                default: throw new NotSupportedException(framingProtocol.ToString());
             }
         }
 
@@ -70,14 +76,20 @@ namespace Xeeny.Sockets.TcpSockets
                 transportChannel = new SslSocketChannel(socket, ip, port, certName, validationCallback, this.ConnectionName);
             }
 
-            var allowConcurrentMessages = settings.AllowConcurrentMessages;
-            if (allowConcurrentMessages)
+            var framingProtocol = settings.FramingProtocol;
+            switch (framingProtocol)
             {
-                _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
-            }
-            else
-            {
-                _channel = new SerialMessageStreamChannel(transportChannel, settings);
+                case FramingProtocol.SerialFragments:
+                    {
+                        _channel = new SerialMessageStreamChannel(transportChannel, settings);
+                        break;
+                    }
+                case FramingProtocol.ConcurrentFragments:
+                    {
+                        _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
+                        break;
+                    }
+                default: throw new NotSupportedException(framingProtocol.ToString());
             }
         }
 

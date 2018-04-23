@@ -68,7 +68,7 @@ namespace Xeeny.Dispatching
             var operationDescription = operations.FirstOrDefault(x => x.Operation == operation);
             if (operationDescription == null)
             {
-                throw new Exception($"Could not find operation {operation}, operation {operation}");
+                throw new Exception($"Could not find operation {operation}");
             }
             return new OperationContext(operationDescription, serverProxy);
         }

@@ -20,8 +20,12 @@ namespace Xeeny.ConsoleTest
         {
             try
             {
+                //await Debug();
                 //await SslTest();
-                await Profile(5000, SocketType.TCP, false, 1024 * 2);
+                var small = 600;
+                var big = 1024 * 2;
+                var framing = FramingProtocol.SerialFragments;
+                await Profile(5000, SocketType.TCP, false, big, big, big, big, framing);
                 //await EndToEndTest();
             }
             catch(Exception ex)
@@ -34,8 +38,50 @@ namespace Xeeny.ConsoleTest
             }
         }
 
+        static async Task Debug()
+        {
+            var tcpAddress = $"tcp://localhost:9999/tcpTest";
 
-        static async Task Profile(int count, SocketType socketType, bool useSsl, int bufferSize)
+            var host = new ServiceHostBuilder<Service>(InstanceMode.PerConnection)
+                            .AddTcpServer(tcpAddress, options =>
+                            {
+                                options.ReceiveBufferSize = 40;
+                                options.ReceiveTimeout = TimeSpan.FromMinutes(60);
+                                options.Timeout = TimeSpan.FromMinutes(60);
+                                options.FramingProtocol = FramingProtocol.ConcurrentFragments;
+                            })
+                            .WithConsoleLogger(LogLevel.Trace)
+                            .CreateHost();
+            await host.Open();
+
+            var client = await new ConnectionBuilder<IService>()
+                               .WithTcpTransport(tcpAddress, options =>
+                               {
+                                   options.SendBufferSize = 45;
+                                   options.KeepAliveInterval = TimeSpan.FromMinutes(50);
+                                   options.ReceiveTimeout = TimeSpan.FromMinutes(60);
+                                   options.Timeout = TimeSpan.FromMinutes(60);
+                                   options.FramingProtocol = FramingProtocol.ConcurrentFragments;
+                               })
+                               .WithConsoleLogger(LogLevel.None)
+                               .CreateConnection();
+
+            var msg = await client.Echo("test");
+            Console.WriteLine(msg);
+
+            await host.Close();
+            ((IConnection)client).Close();
+
+            Console.WriteLine("Test Done!");
+        }
+
+
+        static async Task Profile(int count, SocketType socketType, bool useSsl,
+            int serverSendBufferSize,
+            int serverReciveBufferSize,
+            int clientSendBufferSize,
+            int clientReceiveBufferSize,
+            FramingProtocol framingProtocol)
         {
             X509Certificate2 x509Cert = null;
             string certName = null;
@@ -58,7 +104,8 @@ namespace Xeeny.ConsoleTest
             {
                 hostBuilder.AddWebSocketServer(httpAddress, options =>
                 {
-                    options.ReceiveBufferSize = bufferSize;
+                    options.ReceiveBufferSize = serverReciveBufferSize;
+                    options.SendBufferSize = serverReciveBufferSize;
                     if(useSsl)
                     {
                         throw new NotImplementedException();
@@ -68,7 +115,8 @@ namespace Xeeny.ConsoleTest
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithWebSocketTransport(httpAddress, options =>
                                     {
-                                        options.SendBufferSize = bufferSize;
+                                        options.SendBufferSize = clientSendBufferSize;
+                                        options.ReceiveBufferSize = serverReciveBufferSize;
                                         if(useSsl)
                                         {
                                             throw new NotImplementedException();
@@ -79,17 +127,22 @@ namespace Xeeny.ConsoleTest
             {
                 hostBuilder.AddTcpServer(tcpAddress, options =>
                 {
-                    options.ReceiveBufferSize = bufferSize;
+                    options.ReceiveBufferSize = serverReciveBufferSize;
+                    options.SendBufferSize = serverSendBufferSize;
+                    options.FramingProtocol = framingProtocol;
                     if(useSsl)
                     {
                         options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
+
                     }
                 });
 
                 clientBuilder = new ConnectionBuilder<IService>()
                                     .WithTcpTransport(tcpAddress, options =>
                                     {
-                                        options.SendBufferSize = bufferSize;
+                                        options.SendBufferSize = clientSendBufferSize;
+                                        options.ReceiveBufferSize = clientReceiveBufferSize;
+                                        options.FramingProtocol = framingProtocol;
                                         if(useSsl)
                                         {
                                             options.SecuritySettings = SecuritySettings.CreateForClient(certName);
@@ -138,7 +191,7 @@ namespace Xeeny.ConsoleTest
                             .AddTcpServer(tcpAddress, options =>
                             {
                                 options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
-                                //options.AllowConcurrentMessages = true;
+                                options.FramingProtocol = FramingProtocol.ConcurrentFragments;
                             })
                             .WithConsoleLogger(LogLevel.Trace)
                             .CreateHost();
@@ -148,7 +201,7 @@ namespace Xeeny.ConsoleTest
                                .WithTcpTransport(tcpAddress, options =>
                                {
                                    options.SecuritySettings = SecuritySettings.CreateForClient(certName);
-                                   //options.AllowConcurrentMessages = true;
+                                   options.FramingProtocol = FramingProtocol.ConcurrentFragments;
                                })
                                .WithConsoleLogger(LogLevel.None)
                                .CreateConnection();

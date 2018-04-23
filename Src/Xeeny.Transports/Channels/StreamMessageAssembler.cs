@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Xeeny.Transports.Channels
 {
-    class MessageAssembler : IDisposable
+    class StreamMessageAssembler : IDisposable
     {
         public Guid MessageId => _messageId;
         public bool IsComplete => _isComplete;
@@ -16,58 +16,51 @@ namespace Xeeny.Transports.Channels
         readonly int _totalSize;
         readonly DateTime _creationTime;
 
-        int _currentSize;
         byte[] _buffer;
         bool _isComplete;
-        List<int> _receivedIndexes;
+        int _index;
 
-        public MessageAssembler(Guid messageId, int totalSize)
+        public StreamMessageAssembler(Guid messageId, int totalSize)
         {
             _messageId = messageId;
             _totalSize = totalSize;
             _buffer = ArrayPool<byte>.Shared.Rent(totalSize);
             _isComplete = false;
-            _currentSize = 0;
-            _receivedIndexes = new List<int>();
             _creationTime = DateTime.Now;
         }
 
-        public bool AddPartialMessage(ArraySegment<byte> partialMessage, int index)
+        public bool AddPartialMessage(ArraySegment<byte> partialMessage)
         {
-            if(index < 0)
+            if(IsComplete)
             {
-                throw new ArgumentException(nameof(index));
+                throw new Exception("Message is already complete");
             }
+
             var count = partialMessage.Count;
-            if(count - index > _totalSize)
+            if(count + _index > _totalSize)
             {
-                throw new Exception($"Too big partial message, count: {count}, index {index}" +
-                    $" while available is {_totalSize - index}");
+                throw new Exception($"Too big partial message, count: {count}, index {_index}" +
+                    $" while available is {_totalSize - _index}");
             }
-            BufferHelper.CopyToIndex(partialMessage.Array, _buffer, index);
-            if (!_receivedIndexes.Any(x => x == index))
-            {
-                _receivedIndexes.Add(index);
-                _currentSize += count;
-            }
-            _isComplete = _currentSize == _totalSize;
+            Buffer.BlockCopy(partialMessage.Array, partialMessage.Offset, _buffer, _index, partialMessage.Count);
+            _index += count;
+            _isComplete = _index == _totalSize;
             return _isComplete;
         }
 
-        public ArraySegment<byte> GetMessage()
+        public byte[] GetMessage()
         {
             if(!IsComplete)
             {
                 throw new Exception("Message is not complete");
             }
-            return new ArraySegment<byte>(_buffer, 0, _totalSize);
+            return _buffer;
         }
 
         public void Dispose()
         {
             ArrayPool<byte>.Shared.Return(_buffer);
             _buffer = null;
-            _receivedIndexes = null;
         }
     }
 }
