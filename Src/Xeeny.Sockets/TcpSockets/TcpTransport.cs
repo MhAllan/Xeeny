@@ -16,39 +16,8 @@ namespace Xeeny.Sockets.TcpSockets
         public TcpTransport(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
             : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpTransport)))
         {
-            ITransportChannel transportChannel = null;
-            var securitySettings = settings.SecuritySettings;
-            if(securitySettings == null)
-            {
-                transportChannel = new TcpSocketChannel(socket, SocketFlags.None, this.ConnectionName);
-            }
-            else
-            {
-                var x509Certificate = securitySettings.X509Certificate;
-                var validationCallback = securitySettings.ValidationCallback;
-                transportChannel = new SslSocketChannel(socket, x509Certificate, validationCallback, this.ConnectionName);
-            }
-
-            var framingProtocol = settings.FramingProtocol;
-            switch(framingProtocol)
-            {
-                case FramingProtocol.SerialFragments:
-                    {
-                        _channel = new SerialMessageStreamChannel(transportChannel, settings);
-                        break;
-                    }
-                case FramingProtocol.ConcurrentFragments:
-                    {
-                        _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
-                        break;
-                    }
-                case FramingProtocol.UnorderedConcurrentFragments:
-                    {
-                        _channel = new UnorderedConcurrentMessageChannel(transportChannel, settings);
-                        break;
-                    }
-                default: throw new NotSupportedException(framingProtocol.ToString());
-            }
+            var transport = CreateTransport(socket, settings.SecuritySettings);
+            _channel = CreateChannel(transport, settings);
         }
 
         public TcpTransport(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
@@ -67,10 +36,14 @@ namespace Xeeny.Sockets.TcpSockets
 
             socket.NoDelay = true;
 
-            ITransportChannel transportChannel;
+            var transport = CreateTransport(socket, ip, port, settings.SecuritySettings);
+            _channel = CreateChannel(transport, settings);
+        }
 
-            var securitySettings = settings.SecuritySettings;
-            if(securitySettings == null)
+        ITransportChannel CreateTransport(Socket socket, IPAddress ip, int port, SecuritySettings securitySettings)
+        {
+            ITransportChannel transportChannel;
+            if (securitySettings == null)
             {
                 transportChannel = new TcpSocketChannel(socket, ip, port, SocketFlags.None, this.ConnectionName);
             }
@@ -80,24 +53,41 @@ namespace Xeeny.Sockets.TcpSockets
                 var validationCallback = securitySettings.ValidationCallback;
                 transportChannel = new SslSocketChannel(socket, ip, port, certName, validationCallback, this.ConnectionName);
             }
+            return transportChannel;
+        }
 
+        ITransportChannel CreateTransport(Socket socket, SecuritySettings securitySettings)
+        {
+            ITransportChannel transportChannel;
+            if (securitySettings == null)
+            {
+                transportChannel = new TcpSocketChannel(socket, SocketFlags.None, this.ConnectionName);
+            }
+            else
+            {
+                var x509Certificate = securitySettings.X509Certificate;
+                var validationCallback = securitySettings.ValidationCallback;
+                transportChannel = new SslSocketChannel(socket, x509Certificate, validationCallback, this.ConnectionName);
+            }
+            return transportChannel;
+        }
+
+        IMessageChannel CreateChannel(ITransportChannel transportChannel, IPSocketSettings settings)
+        {
             var framingProtocol = settings.FramingProtocol;
             switch (framingProtocol)
             {
                 case FramingProtocol.SerialFragments:
                     {
-                        _channel = new SerialMessageStreamChannel(transportChannel, settings);
-                        break;
+                        return new SerialMessageStreamChannel(transportChannel, settings);
                     }
                 case FramingProtocol.ConcurrentFragments:
                     {
-                        _channel = new ConcurrentMessageStreamChannel(transportChannel, settings);
-                        break;
+                        return new ConcurrentMessageStreamChannel(transportChannel, settings);
                     }
                 case FramingProtocol.UnorderedConcurrentFragments:
                     {
-                        _channel = new UnorderedConcurrentMessageChannel(transportChannel, settings);
-                        break;
+                        return new UnorderedConcurrentMessageChannel(transportChannel, settings);
                     }
                 default: throw new NotSupportedException(framingProtocol.ToString());
             }
