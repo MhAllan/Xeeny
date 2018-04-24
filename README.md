@@ -469,7 +469,7 @@ You can get all Xeeny framwork features above to work with your custom transport
 * Implement `XeenyListener` abstract class
 * Pass it to `ServiceHostBuilder<T>.AddCustomServer()`
 ##### On the client:
-* Implement `IXeenySocketFactory`
+* Implement `IXeenyTransportFactory`
 * Pass it to `ConnectionBuilder<T>.WithCustomTransport()`
 
 #### Custom Protocol
@@ -478,7 +478,7 @@ If you want to have your own protocol from scratch, you need to implement your o
 * Implement `IListener`
 * Pass it to `ServiceHostBuilder<T>.AddCustomServer()`
 ##### On the client
-* Implement `ISocketFactory`
+* Implement `ITransportFactory`
 * Pass it to `ConnectionBuilder<T>.WithCustomTransport()`
 
 ## Samples
