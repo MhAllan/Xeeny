@@ -294,7 +294,7 @@ namespace Xeeny.Transports
                             }
                             catch { }
                         }
-                        OnClose(CancellationToken.None);
+                        await OnClose(CancellationToken.None);
                     }
                 }
                 catch(Exception ex)

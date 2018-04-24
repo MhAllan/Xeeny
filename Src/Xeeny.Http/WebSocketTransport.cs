@@ -24,7 +24,7 @@ namespace Xeeny.Http
         }
 
         public WebSocketTransport(Uri uri, WebSocketTransportSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(WebSocketTransport)))
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(WebSocketTransport)))
         {
             var transport = new WebSocketChannel(uri, this.ConnectionName);
             _channel = CreateChannel(transport, settings);
