@@ -1,13 +1,12 @@
-﻿using Xeeny.Sockets;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Xeeny.Transports;
 
 namespace Xeeny.Api.Client.Extended
 {
-    public interface IXeenySocketFactory
+    public interface IXeenyTransportFactory
     {
-        TransportBase CreateSocket();
+        TransportBase CreateTransport();
     }
 }

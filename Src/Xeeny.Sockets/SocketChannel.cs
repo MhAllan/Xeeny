@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 using Xeeny.Transports;
 using Xeeny.Transports.Channels;
 
-namespace Xeeny.Sockets.TcpSockets
+namespace Xeeny.Sockets
 {
-    public class TcpSocketChannel : ITransportChannel
+    public class SocketChannel : ITransportChannel
     {
         public ConnectionSide ConnectionSide => _connectionSide;
         public string ConnectionName => _connectionName;
@@ -23,7 +23,7 @@ namespace Xeeny.Sockets.TcpSockets
         readonly ConnectionSide _connectionSide;
         readonly string _connectionName;
 
-        public TcpSocketChannel(Socket socket, IPAddress address, int port, SocketFlags flags, string connectionName)
+        public SocketChannel(Socket socket, IPAddress address, int port, SocketFlags flags, string connectionName)
         {
             _socket = socket;
             _ipAddress = address;
@@ -33,7 +33,7 @@ namespace Xeeny.Sockets.TcpSockets
             _connectionSide = ConnectionSide.Client;
         }
 
-        public TcpSocketChannel(Socket socket, SocketFlags flags, string connectionName)
+        public SocketChannel(Socket socket, SocketFlags flags, string connectionName)
         {
             _socket = socket;
             _flags = flags;
@@ -45,21 +45,25 @@ namespace Xeeny.Sockets.TcpSockets
         {
             if(_connectionSide == ConnectionSide.Client)
             {
-                await _socket.ConnectAsync(_ipAddress, _port);
+                await _socket.ConnectAsync(_ipAddress, _port)
+                                .ConfigureAwait(false);
             }
         }
 
-        public Task SendAsync(ArraySegment<byte> segment, CancellationToken ct)
+        public async Task SendAsync(ArraySegment<byte> segment, CancellationToken ct)
         {
-            return _socket.SendAsync(segment, _flags);
+            await _socket.SendAsync(segment, _flags)
+                            .ConfigureAwait(false);
         }
 
-        public Task<int> ReceiveAsync(ArraySegment<byte> segment, CancellationToken ct)
+        public async Task<int> ReceiveAsync(ArraySegment<byte> segment, CancellationToken ct)
         {
-            return _socket.ReceiveAsync(segment, _flags);
+            var read = await _socket.ReceiveAsync(segment, _flags)
+                            .ConfigureAwait(false);
+            return read;
         }
 
-        public void Close(CancellationToken ct)
+        public Task Close(CancellationToken ct)
         {
             try
             {
@@ -71,6 +75,7 @@ namespace Xeeny.Sockets.TcpSockets
             {
                 _socket.Dispose();
             }
+            return Task.CompletedTask;
         }
     }
 }

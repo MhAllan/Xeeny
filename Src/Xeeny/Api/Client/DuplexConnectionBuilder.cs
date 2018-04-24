@@ -53,9 +53,9 @@ namespace Xeeny.Api.Client
             instanceContextFactory.InstanceCreated += OnInstanceFactoryInstanceCreate;
             instanceContextFactory.SessionInstanceRemoved += OnInstanceFactorySessionInstanceRemoved;
 
-            var socket = SocketFactory.CreateSocket(LoggerFactory);
+            var transport = TransportFactory.CreateTransport(LoggerFactory);
 
-            var duplexClient = new DuplexClientConnection(socket, msgBuilder, instanceContextFactory);
+            var duplexClient = new DuplexClientConnection(transport, msgBuilder, instanceContextFactory);
 
             var proxy = new ProxyEmitter<TService, DuplexClientConnection>(duplexClient).CreateProxy();
 

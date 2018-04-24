@@ -1,7 +1,5 @@
-﻿using Xeeny.Connections;
-using Xeeny.Dispatching;
+﻿using Xeeny.Dispatching;
 using Xeeny.Messaging;
-using Xeeny.Sockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -21,12 +19,12 @@ namespace Xeeny.Connections
         readonly Type _callbackType;
         object _callback;
 
-        internal ServerConnection(ITransport socket, IMessageBuilder msgBuilder, 
+        internal ServerConnection(ITransport transport, IMessageBuilder msgBuilder, 
             IInstanceContextFactory instanceContextFactory,
             Type callbackType,
             ILogger logger) 
             
-            : base(socket)
+            : base(transport)
         {
             _instanceContextFactory = instanceContextFactory;
             _msgBuilder = msgBuilder;
@@ -36,11 +34,11 @@ namespace Xeeny.Connections
 
         public override async Task Connect()
         {
-            await this.Socket.Connect();
-            this.Socket.Listen();
+            await this.Transport.Connect();
+            this.Transport.Listen();
         }
 
-        protected override async void OnRequestReceived(ITransport socket, Message message)
+        protected override async void OnRequestReceived(ITransport transport, Message message)
         {
             var msgType = message.MessageType;
             switch (msgType)
@@ -82,7 +80,7 @@ namespace Xeeny.Connections
 
                         if (result.HasResponse)
                         {
-                            await this.Socket.SendResponse(result.Response);
+                            await this.Transport.SendResponse(result.Response);
                         }
                         break;
                     }
@@ -99,13 +97,13 @@ namespace Xeeny.Connections
         {
             var request = _msgBuilder.CreateOneWayRequest(operation, parameters);
             //server doesn't wait.
-            this.Socket.SendOneWay(request);
+            this.Transport.SendOneWay(request);
         }
 
         public async Task SendOneWayAsync(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateOneWayRequest(operation, parameters);
-            await this.Socket.SendOneWay(msg);
+            await this.Transport.SendOneWay(msg);
         }
 
         public TCallback GetCallback<TCallback>()

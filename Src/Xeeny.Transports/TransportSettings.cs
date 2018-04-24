@@ -70,5 +70,17 @@ namespace Xeeny.Transports
         /// Connection name formatter, this is for logging. First argument is connection id.
         /// </summary>
         public ConnectionNameFormatter ConnectionNameFormatter { get; set; }
+
+        public TransportSettings(ConnectionSide connectionSide)
+        {
+            if(connectionSide == ConnectionSide.Client)
+            {
+                ConnectionNameFormatter = id => $"Connection ({id})";
+            }
+            else
+            {
+                ConnectionNameFormatter = id => $"Server Connection ({id})";
+            }
+        }
     }
 }

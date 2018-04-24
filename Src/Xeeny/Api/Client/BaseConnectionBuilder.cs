@@ -8,6 +8,6 @@ namespace Xeeny.Api.Client
 {
     public abstract class BaseConnectionBuilder : BaseBuilder
     {
-        internal protected abstract ISocketFactory SocketFactory { get; set; }
+        internal protected abstract ITransportFactory TransportFactory { get; set; }
     }
 }

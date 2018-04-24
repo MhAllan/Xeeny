@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using Xeeny.Sockets;
-using Xeeny.Sockets.TcpSockets;
-using Xeeny.Sockets.WebSockets;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,47 +9,7 @@ namespace Xeeny.Api
 {
     static class SocketTools
     {
-        public static WebSocket CreateWebSocket(string address, TransportSettings settings, ILoggerFactory loggerFactory)
-        {
-            if (address == null)
-            {
-                throw new ArgumentNullException(nameof(address));
-            }
-
-            if (address.StartsWith("http://"))
-            {
-                address = address.Replace("http://", "ws://");
-            }
-
-            var uri = new Uri(address);
-            if (uri.Scheme != "ws")
-            {
-                throw new Exception($"{nameof(address)} must be valid http:// or ws:// address");
-            }
-
-            return new WebSocket(uri, settings, loggerFactory);
-        }
-
-        public static IListener CreateWebSocketListener(string address, TransportSettings settings, ILoggerFactory loggerFactory)
-        {
-            if (address == null)
-            {
-                throw new ArgumentNullException(nameof(address));
-            }
-
-            if (!address.EndsWith("/"))
-                address += "/";
-
-            var uri = new Uri(address);
-            if (uri.Scheme != Uri.UriSchemeHttp)
-            {
-                throw new Exception($"{nameof(address)} must be valid http:// address");
-            }
-
-            return new WebSocketListener(uri, settings, loggerFactory);
-        }
-
-        public static TcpTransport CreateTcpSocket(string address, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public static SocketTransport CreateTcpTransport(string address, SocketTransportSettings settings, ILoggerFactory loggerFactory)
         {
             if (address == null)
             {
@@ -64,10 +22,10 @@ namespace Xeeny.Api
                 throw new Exception($"{nameof(address)} must be valid tcp:// or net.tcp:// address");
             }
 
-            return new TcpTransport(uri, settings, loggerFactory);
+            return new SocketTransport(uri, settings, loggerFactory);
         }
 
-        public static IListener CreateTcpListener(string address, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public static IListener CreateTcpListener(string address, SocketTransportSettings settings, ILoggerFactory loggerFactory)
         {
             if (address == null)
             {

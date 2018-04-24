@@ -237,7 +237,7 @@ namespace Xeeny.Transports.Channels
             _assemblers.Remove(assembler.MessageId);
         }
 
-        public void Close(CancellationToken ct)
+        public async Task Close(CancellationToken ct)
         {
             _assemblersCleanTimer.Dispose();
             foreach (var assembler in _assemblers.Values)
@@ -245,7 +245,7 @@ namespace Xeeny.Transports.Channels
                 DisposeAssembler(assembler);
             }
             _assemblers = null;
-            _transportChannel.Close(ct);
+            await _transportChannel.Close(ct);
         }
     }
 }

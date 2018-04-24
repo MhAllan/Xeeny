@@ -8,37 +8,33 @@ using Xeeny.Transports;
 
 namespace Xeeny.Api.Client
 {
-    class SocketFactory : ISocketFactory
+    class TransportFactory : ITransportFactory
     {
-        readonly IXeenySocketFactory _customFactory;
+        readonly IXeenyTransportFactory _customFactory;
         readonly string _address;
         readonly SocketType _socketType;
         readonly TransportSettings _settings;
 
-        public SocketFactory(string address, SocketType socketType, TransportSettings settings)
+        public TransportFactory(string address, SocketType socketType, TransportSettings settings)
         {
             _address = address;
             _socketType = socketType;
             _settings = settings;
         }
 
-        public SocketFactory(IXeenySocketFactory customFactory)
+        public TransportFactory(IXeenyTransportFactory customFactory)
         {
             _customFactory = customFactory;
         }
 
-        public ITransport CreateSocket(ILoggerFactory loggerFactory)
+        public ITransport CreateTransport(ILoggerFactory loggerFactory)
         {
             if (_customFactory != null)
-                return _customFactory.CreateSocket();
+                return _customFactory.CreateTransport();
 
-            if (_socketType == SocketType.WebSocket)
+            if (_socketType == SocketType.TCP)
             {
-                return SocketTools.CreateWebSocket(_address, _settings, loggerFactory);
-            }
-            else if (_socketType == SocketType.TCP)
-            {
-                return SocketTools.CreateTcpSocket(_address, (IPSocketSettings)_settings, loggerFactory);
+                return SocketTools.CreateTcpTransport(_address, (SocketTransportSettings)_settings, loggerFactory);
             }
             else
             {

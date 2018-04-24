@@ -67,7 +67,7 @@ namespace Xeeny.Transports
         }
 
         protected abstract Task OnConnect(CancellationToken ct);
-        protected abstract void OnClose(CancellationToken ct);
+        protected abstract Task OnClose(CancellationToken ct);
         protected abstract void OnKeepAlivedReceived(Message message);
         protected abstract void OnAgreementReceived(Message message);
         protected abstract Task SendMessage(Message message, CancellationToken ct);

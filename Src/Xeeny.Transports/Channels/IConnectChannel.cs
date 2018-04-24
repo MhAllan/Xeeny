@@ -12,6 +12,6 @@ namespace Xeeny.Transports.Channels
         ConnectionSide ConnectionSide { get; }
 
         Task Connect(CancellationToken ct);
-        void Close(CancellationToken ct);
+        Task Close(CancellationToken ct);
     }
 }

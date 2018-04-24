@@ -1,5 +1,4 @@
-﻿using Xeeny.Sockets;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,11 +8,11 @@ namespace Xeeny.Api.Server.Extended
 {
     public abstract class XeenyListener : IListener
     {
-        protected abstract Task<TransportBase> AcceptXeenySocket();
+        protected abstract Task<TransportBase> AcceptXeenyTransport();
 
-        public async Task<ITransport> AcceptSocket()
+        public async Task<ITransport> AcceptConnection()
         {
-            return await AcceptXeenySocket();
+            return await AcceptXeenyTransport();
         }
 
         public abstract void Close();

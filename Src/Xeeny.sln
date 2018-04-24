@@ -23,7 +23,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{410A6F61
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.UnitTest", "Xeeny.UnitTest\Xeeny.UnitTest.csproj", "{B3B1FB13-86F6-4AD9-9FF2-7B19A3D71B9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.Transports", "Xeeny.Transports\Xeeny.Transports.csproj", "{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.Transports", "Xeeny.Transports\Xeeny.Transports.csproj", "{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.Http", "Xeeny.Http\Xeeny.Http.csproj", "{B50B2B78-1045-4915-826E-23D6C6BB3C3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +69,10 @@ Global
 		{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B50B2B78-1045-4915-826E-23D6C6BB3C3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B50B2B78-1045-4915-826E-23D6C6BB3C3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B50B2B78-1045-4915-826E-23D6C6BB3C3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B50B2B78-1045-4915-826E-23D6C6BB3C3F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,6 +87,7 @@ Global
 		{F99DB70F-A1D1-483E-9424-FEEB5536DCEE} = {410A6F61-9AE0-4A08-BE1E-B45008DD78A7}
 		{B3B1FB13-86F6-4AD9-9FF2-7B19A3D71B9F} = {410A6F61-9AE0-4A08-BE1E-B45008DD78A7}
 		{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E} = {E311F5F6-0C78-4859-A5D9-948ADC3208D2}
+		{B50B2B78-1045-4915-826E-23D6C6BB3C3F} = {E311F5F6-0C78-4859-A5D9-948ADC3208D2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C83B20B6-D44D-448C-B815-8DCEFC0ABB54}

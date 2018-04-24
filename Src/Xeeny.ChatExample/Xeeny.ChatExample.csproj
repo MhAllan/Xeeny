@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Xeeny.Extensions.Loggers\Xeeny.Extensions.Loggers.csproj" />
+    <ProjectReference Include="..\Xeeny.Http\Xeeny.Http.csproj" />
     <ProjectReference Include="..\Xeeny.Serialization.JsonSerializer\Xeeny.Serialization.JsonSerializer.csproj" />
     <ProjectReference Include="..\Xeeny.Serialization.ProtobufSerializer\Xeeny.Serialization.ProtobufSerializer.csproj" />
     <ProjectReference Include="..\Xeeny.Sockets\Xeeny.Sockets.csproj" />

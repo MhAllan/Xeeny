@@ -1,20 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Xeeny.Transports;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Http
 {
-    public class IPSocketSettings : SocketTransportSettings
+    public class WebSocketTransportSettings : TransportSettings
     {
-        public IPVersion IPVersion { get; set; }
         /// <summary>
         /// Message Framing Protocol
         /// </summary>
         public FramingProtocol FramingProtocol { get; set; }
 
-        public IPSocketSettings()
+        public WebSocketTransportSettings(ConnectionSide connectionSide)
+            : base(connectionSide)
         {
-            IPVersion = IPVersion.IPv6;
+
         }
     }
 }

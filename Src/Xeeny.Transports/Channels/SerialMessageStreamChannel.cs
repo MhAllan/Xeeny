@@ -163,9 +163,9 @@ namespace Xeeny.Transports.Channels
             }
         }
 
-        public void Close(CancellationToken ct)
+        public async Task Close(CancellationToken ct)
         {
-            _transportChannel.Close(ct);
+            await _transportChannel.Close(ct);
         }
     }
 }

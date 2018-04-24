@@ -12,18 +12,18 @@ namespace Xeeny.Connections
         public event Action<IConnectionSession> SessionEnded;
         public event Action<IConnectionObject> StateChanged;
 
-        public ConnectionState State => Socket.State;
+        public ConnectionState State => Transport.State;
 
-        public string ConnectionId => Socket.ConnectionId;
-        public string ConnectionName => Socket.ConnectionName;
+        public string ConnectionId => Transport.ConnectionId;
+        public string ConnectionName => Transport.ConnectionName;
 
-        protected readonly ITransport Socket;
+        protected readonly ITransport Transport;
 
-        public ConnectionBase(ITransport socket)
+        public ConnectionBase(ITransport transport)
         {
-            Socket = socket;
-            Socket.StateChanged += OnSocketStateChanged;
-            Socket.RequestReceived += OnRequestReceived;
+            Transport = transport;
+            Transport.StateChanged += OnTransportStateChanged;
+            Transport.RequestReceived += OnRequestReceived;
         }
 
         protected virtual void OnRequestReceived(ITransport socket, Message message)
@@ -31,7 +31,7 @@ namespace Xeeny.Connections
             //Nothing, Implement in subclasses
         }
 
-        private void OnSocketStateChanged(IConnectionObject obj)
+        private void OnTransportStateChanged(IConnectionObject obj)
         {
             this.StateChanged?.Invoke(this);
 
@@ -45,12 +45,12 @@ namespace Xeeny.Connections
 
         public void Close()
         {
-            this.Socket.Close();
+            this.Transport.Close();
         }
 
         public void Dispose()
         {
-            this.Socket.Dispose();
+            this.Transport.Dispose();
         }
     }
 }

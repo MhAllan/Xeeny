@@ -10,43 +10,31 @@ namespace Xeeny.Api.Client
     public static class ConnectionBuilderExtensions
     {
         public static TBuilder WithTcpTransport<TBuilder>(this TBuilder builder, string address,
-            Action<IPSocketSettings> options = null)
+            Action<SocketTransportSettings> options = null)
             where TBuilder : BaseConnectionBuilder
         {
-            var settings = new IPSocketSettings();
+            var settings = new SocketTransportSettings(ConnectionSide.Client);
             options?.Invoke(settings);
 
-            builder.SocketFactory = new SocketFactory(address, SocketType.TCP, settings);
+            builder.TransportFactory = new TransportFactory(address, SocketType.TCP, settings);
 
             return builder;
         }
 
-        public static TBuilder WithWebSocketTransport<TBuilder>(this TBuilder builder, string address,
-            Action<TransportSettings> options = null)
-            where TBuilder : BaseConnectionBuilder
-        {
-            var settings = new TransportSettings();
-            options?.Invoke(settings);
-
-            builder.SocketFactory = new SocketFactory(address, SocketType.WebSocket, settings);
-
-            return builder;
-        }
-
-        public static TBuilder WithCustomTransport<TBuilder>(this TBuilder builder, IXeenySocketFactory socketFactory)
+        public static TBuilder WithCustomTransport<TBuilder>(this TBuilder builder, IXeenyTransportFactory transportFactory)
             where TBuilder : BaseConnectionBuilder
         {
             
-            builder.SocketFactory = new SocketFactory(socketFactory);
+            builder.TransportFactory = new TransportFactory(transportFactory);
 
             return builder;
         }
 
-        public static TBuilder WithCustomTransport<TBuilder>(this TBuilder builder, ISocketFactory socketFactory)
+        public static TBuilder WithCustomTransport<TBuilder>(this TBuilder builder, ITransportFactory transportFactory)
             where TBuilder : BaseConnectionBuilder
         {
 
-            builder.SocketFactory = socketFactory;
+            builder.TransportFactory = transportFactory;
 
             return builder;
         }

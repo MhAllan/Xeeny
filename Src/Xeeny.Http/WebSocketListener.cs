@@ -7,20 +7,20 @@ using System.Text;
 using System.Threading.Tasks;
 using Xeeny.Transports;
 
-namespace Xeeny.Sockets.WebSockets
+namespace Xeeny.Http
 {
     public class WebSocketListener : IListener
     {
         public HttpListener Listener => _listener;
 
         readonly Uri _uri;
-        readonly TransportSettings _socketSettings;
+        readonly WebSocketTransportSettings _socketSettings;
         readonly ILoggerFactory _loggerFactory;
         readonly ILogger _logger;
 
         HttpListener _listener;
 
-        public WebSocketListener(Uri uri, TransportSettings settings, ILoggerFactory loggerFactory)
+        public WebSocketListener(Uri uri, WebSocketTransportSettings settings, ILoggerFactory loggerFactory)
         {
             _uri = uri;
             _socketSettings = settings;
@@ -40,7 +40,7 @@ namespace Xeeny.Sockets.WebSockets
             _listener.Start();
         }
 
-        public async Task<ITransport> AcceptSocket()
+        public async Task<ITransport> AcceptConnection()
         {
             var context = await _listener.GetContextAsync();
             if (context.Request.IsWebSocketRequest)
@@ -49,7 +49,7 @@ namespace Xeeny.Sockets.WebSockets
 
                 var socket = wsContext.WebSocket;
 
-                return new WebSocket(socket, _socketSettings, _loggerFactory);
+                return new WebSocketTransport(socket, _socketSettings, _loggerFactory);
             }
             else
             {

@@ -6,20 +6,20 @@ using System.Threading.Tasks;
 using Xeeny.Transports;
 using SNS = System.Net.Sockets;
 
-namespace Xeeny.Sockets.TcpSockets
+namespace Xeeny.Sockets
 {
     public class TcpListener : IListener
     {
         public System.Net.Sockets.TcpListener Listener => _listener;
 
-        readonly IPSocketSettings _socketSettings;
+        readonly SocketTransportSettings _socketSettings;
         readonly ILoggerFactory _loggerFactory;
         readonly ILogger _logger;
 
         readonly Uri _uri;
         System.Net.Sockets.TcpListener _listener;
 
-        public TcpListener(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
+        public TcpListener(Uri uri, SocketTransportSettings settings, ILoggerFactory loggerFactory)
         {
             _uri = uri;
             _socketSettings = settings;
@@ -51,10 +51,10 @@ namespace Xeeny.Sockets.TcpSockets
             _listener.Start();
         }
 
-        public async Task<ITransport> AcceptSocket()
+        public async Task<ITransport> AcceptConnection()
         {
             var socket = await _listener.AcceptSocketAsync();
-            return new TcpTransport(socket, _socketSettings, _loggerFactory);
+            return new SocketTransport(socket, _socketSettings, _loggerFactory);
         }
 
         public void Close()

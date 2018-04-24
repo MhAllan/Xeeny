@@ -9,32 +9,13 @@ namespace Xeeny.Api.Server
 {
     public static class Extensions
     {
-        static readonly ConnectionNameFormatter ServerConnectionNameFormatter = id => $"Server Connection ({id})";
-
         public static TBuilder AddTcpServer<TBuilder>(this TBuilder builder, string address,
-            Action<IPSocketSettings> options = null)
+            Action<SocketTransportSettings> options = null)
             where TBuilder : BaseServiceHostBuilder
         {
-            var settings = new IPSocketSettings
-            {
-                ConnectionNameFormatter = ServerConnectionNameFormatter
-            };
+            var settings = new SocketTransportSettings(ConnectionSide.Server);
             options?.Invoke(settings);
             var listener = SocketTools.CreateTcpListener(address, settings, builder.LoggerFactory);
-            builder.Listeners.Add(listener);
-            return builder;
-        }
-
-        public static TBuilder AddWebSocketServer<TBuilder>(this TBuilder builder, string address,
-            Action<TransportSettings> options = null)
-            where TBuilder : BaseServiceHostBuilder
-        {
-            var settings = new TransportSettings
-            {
-                ConnectionNameFormatter = ServerConnectionNameFormatter
-            };
-            options?.Invoke(settings);
-            var listener = SocketTools.CreateWebSocketListener(address, settings, builder.LoggerFactory);
             builder.Listeners.Add(listener);
             return builder;
         }

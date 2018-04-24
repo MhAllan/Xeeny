@@ -83,7 +83,7 @@ namespace Xeeny.Sockets
             return _sslStream.ReadAsync(segment.Array, segment.Offset, segment.Count, ct);
         }
 
-        public void Close(CancellationToken ct)
+        public Task Close(CancellationToken ct)
         {
             try
             {
@@ -96,6 +96,7 @@ namespace Xeeny.Sockets
                 _socket.Dispose();
                 _sslStream?.Dispose();
             }
+            return Task.CompletedTask;
         }
     }
 }

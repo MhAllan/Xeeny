@@ -96,7 +96,7 @@ namespace Xeeny.Server
 
                         State = HostStatus.Opened;
 
-                        StartAcceptingSockets();
+                        StartAcceptingConnections();
                     }
                     else
                     {
@@ -114,29 +114,29 @@ namespace Xeeny.Server
             }
         }
 
-        void StartAcceptingSockets()
+        void StartAcceptingConnections()
         {
             foreach(var listener in _listeners)
             {
-                StartAcceptingSockets(listener);
+                StartAcceptingConnections(listener);
             }
         }
 
-        async void StartAcceptingSockets(IListener listener)
+        async void StartAcceptingConnections(IListener listener)
         {
             while (this.State == HostStatus.Opened && cancellationToken.IsCancellationRequested == false)
             {
                 try
                 {
-                    var socket = await listener.AcceptSocket();
-                    var proxy = new ServerConnection(socket, _msgBuilder, _instanceContextFactory, _callbackType, _logger);
+                    var transport = await listener.AcceptConnection();
+                    var proxy = new ServerConnection(transport, _msgBuilder, _instanceContextFactory, _callbackType, _logger);
                     await proxy.Connect();
                 }
                 catch (Exception ex)
                 {
                     if (State <= HostStatus.Opened)
                     {
-                        _logger.LogError(ex, "Could not accept socket");
+                        _logger.LogError(ex, "Could not accept connection");
                     }
                 }
             }

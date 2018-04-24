@@ -6,8 +6,8 @@ using Xeeny.Transports;
 
 namespace Xeeny.Api.Client
 {
-    public interface ISocketFactory
+    public interface ITransportFactory
     {
-        ITransport CreateSocket(ILoggerFactory loggerFactory);
+        ITransport CreateTransport(ILoggerFactory loggerFactory);
     }
 }

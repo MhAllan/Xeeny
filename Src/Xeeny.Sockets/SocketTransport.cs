@@ -7,21 +7,21 @@ using Microsoft.Extensions.Logging;
 using Xeeny.Transports;
 using Xeeny.Transports.Channels;
 
-namespace Xeeny.Sockets.TcpSockets
+namespace Xeeny.Sockets
 {
-    public class TcpTransport : TransportBase
+    public class SocketTransport : TransportBase
     {
         readonly IMessageChannel _channel;
 
-        public TcpTransport(Socket socket, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(TcpTransport)))
+        public SocketTransport(Socket socket, SocketTransportSettings settings, ILoggerFactory loggerFactory)
+            : base (settings, ConnectionSide.Server, loggerFactory.CreateLogger(nameof(SocketTransport)))
         {
             var transport = CreateTransport(socket, settings.SecuritySettings);
             _channel = CreateChannel(transport, settings);
         }
 
-        public TcpTransport(Uri uri, IPSocketSettings settings, ILoggerFactory loggerFactory)
-            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(TcpTransport)))
+        public SocketTransport(Uri uri, SocketTransportSettings settings, ILoggerFactory loggerFactory)
+            : base(settings, ConnectionSide.Client, loggerFactory.CreateLogger(nameof(SocketTransport)))
         {
             var ip = SocketTools.GetIP(uri, settings.IPVersion);
             var port = uri.Port;
@@ -45,7 +45,7 @@ namespace Xeeny.Sockets.TcpSockets
             ITransportChannel transportChannel;
             if (securitySettings == null)
             {
-                transportChannel = new TcpSocketChannel(socket, ip, port, SocketFlags.None, this.ConnectionName);
+                transportChannel = new SocketChannel(socket, ip, port, SocketFlags.None, this.ConnectionName);
             }
             else
             {
@@ -61,7 +61,7 @@ namespace Xeeny.Sockets.TcpSockets
             ITransportChannel transportChannel;
             if (securitySettings == null)
             {
-                transportChannel = new TcpSocketChannel(socket, SocketFlags.None, this.ConnectionName);
+                transportChannel = new SocketChannel(socket, SocketFlags.None, this.ConnectionName);
             }
             else
             {
@@ -72,7 +72,7 @@ namespace Xeeny.Sockets.TcpSockets
             return transportChannel;
         }
 
-        IMessageChannel CreateChannel(ITransportChannel transportChannel, IPSocketSettings settings)
+        IMessageChannel CreateChannel(ITransportChannel transportChannel, SocketTransportSettings settings)
         {
             var framingProtocol = settings.FramingProtocol;
             switch (framingProtocol)
@@ -108,16 +108,9 @@ namespace Xeeny.Sockets.TcpSockets
             return _channel.ReceiveMessage(ct);
         }
 
-        protected override void OnClose(CancellationToken ct)
+        protected override Task OnClose(CancellationToken ct)
         {
-            try
-            {
-                _channel.Close(ct);
-            }
-            catch (Exception ex)
-            {
-                LogTrace($"Failed to Close {ex.Message}");
-            }
+            return _channel.Close(ct);
         }
 
         protected override void OnKeepAlivedReceived(Message message)

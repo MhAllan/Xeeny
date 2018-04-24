@@ -16,7 +16,7 @@ namespace Xeeny.Api.Client
         protected internal override ISerializer Serializer { get; set; } = new MessagePackSerializer();
         protected internal override ILoggerFactory LoggerFactory { get; set; } = new LoggerFactory();
 
-        protected internal override ISocketFactory SocketFactory { get; set; }
+        protected internal override ITransportFactory TransportFactory { get; set; }
 
         public ConnectionBuilder()
         {
@@ -29,9 +29,9 @@ namespace Xeeny.Api.Client
 
             var msgBuilder = new MessageBuilder(Serializer);
 
-            var socket = SocketFactory.CreateSocket(LoggerFactory);
+            var transport = TransportFactory.CreateTransport(LoggerFactory);
 
-            var client = new ClientConnection(socket, msgBuilder);
+            var client = new ClientConnection(transport, msgBuilder);
 
             var proxy = new ProxyEmitter<TService, ClientConnection>(client).CreateProxy();
             if (open)
@@ -44,7 +44,7 @@ namespace Xeeny.Api.Client
 
         private protected void Validate()
         {
-            if (SocketFactory == null)
+            if (TransportFactory == null)
             {
                 throw new Exception("No connection settings, use one WithXXXTransport methods to add settings");
             }

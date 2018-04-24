@@ -11,15 +11,15 @@ namespace Xeeny.Connections
     {
         readonly IInstanceContextFactory _instanceContextFactory;
 
-        internal DuplexClientConnection(ITransport socket, IMessageBuilder msgBuilder,
+        internal DuplexClientConnection(ITransport transport, IMessageBuilder msgBuilder,
             IInstanceContextFactory instanceContextFactory)
 
-            : base(socket, msgBuilder)
+            : base(transport, msgBuilder)
         {
             _instanceContextFactory = instanceContextFactory;
         }
 
-        protected override async void OnRequestReceived(ITransport socket, Message message)
+        protected override async void OnRequestReceived(ITransport transport, Message message)
         {
             var instanceContext = _instanceContextFactory.CreateInstanceContext(this);
 

@@ -9,7 +9,7 @@ namespace Xeeny.Transports
     public interface IListener
     {
         void Listen();
-        Task<ITransport> AcceptSocket();
+        Task<ITransport> AcceptConnection();
         void Close();
     }
 }

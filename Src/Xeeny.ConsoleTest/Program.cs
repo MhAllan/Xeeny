@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography.X509Certificates;
-using Xeeny.Transports;
 using Xeeny.Connections;
 
 namespace Xeeny.ConsoleTest
@@ -193,7 +192,7 @@ namespace Xeeny.ConsoleTest
                                 options.SecuritySettings = SecuritySettings.CreateForServer(x509Cert);
                                 options.FramingProtocol = FramingProtocol.ConcurrentFragments;
                             })
-                            .WithConsoleLogger(LogLevel.Trace)
+                            .WithConsoleLogger(LogLevel.None)
                             .CreateHost();
             await host.Open();
 

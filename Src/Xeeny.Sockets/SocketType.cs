@@ -6,7 +6,6 @@ namespace Xeeny.Sockets
 {
     public enum SocketType
     {
-        WebSocket,
         TCP
     }
 }
