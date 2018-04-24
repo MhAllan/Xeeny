@@ -11,6 +11,8 @@ namespace Xeeny.Http
 {
     class WebSocketChannel : ITransportChannel
     {
+        public WebSocketState State => _webSocket.State;
+
         public string ConnectionName => _connectionName;
 
         public ConnectionSide ConnectionSide => _connectionSide;
@@ -73,6 +75,10 @@ namespace Xeeny.Http
                                 .ConfigureAwait(false);
             }
             catch { }
+            finally
+            {
+                _webSocket.Dispose();
+            }
         }
     }
 }

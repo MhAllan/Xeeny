@@ -19,6 +19,8 @@ namespace Xeeny.Http
         {
             var transport = new WebSocketChannel(webSocket, this.ConnectionName);
             _channel = CreateChannel(transport, settings);
+
+            SetState(transport.State);
         }
 
         public WebSocketTransport(Uri uri, WebSocketTransportSettings settings, ILoggerFactory loggerFactory)
@@ -26,6 +28,21 @@ namespace Xeeny.Http
         {
             var transport = new WebSocketChannel(uri, this.ConnectionName);
             _channel = CreateChannel(transport, settings);
+
+            SetState(transport.State);
+        }
+
+        void SetState(WebSocketState state)
+        {
+            switch(state)
+            {
+                case WebSocketState.None: State = ConnectionState.None; break;
+                case WebSocketState.Connecting: State = ConnectionState.Connecting; break;
+                case WebSocketState.Open: State = ConnectionState.Connected; break;
+                case WebSocketState.CloseSent:
+                case WebSocketState.CloseReceived: State = ConnectionState.Closing; break;
+                default: State = ConnectionState.Closed; break;
+            }
         }
 
         IMessageChannel CreateChannel(ITransportChannel transport, WebSocketTransportSettings settings)

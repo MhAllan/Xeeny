@@ -66,6 +66,7 @@ namespace Xeeny.Transports.Channels
         {
             ArrayPool<byte>.Shared.Return(_buffer);
             _buffer = null;
+            _servedIndexes = null;
         }
     }
 }
