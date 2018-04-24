@@ -314,4 +314,11 @@ namespace Xeeny.ConsoleTest
             return x509Cert;
         }
     }
+
+    enum SocketType
+    {
+        TCP,
+        WebSocket
+    }
+
 }

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Sockets
+namespace Xeeny.Api
 {
-    public enum SocketType
+    enum SocketType
     {
-        TCP
+        TCP,
+        UDP
     }
 }
