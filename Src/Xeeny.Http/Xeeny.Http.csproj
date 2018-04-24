@@ -2,6 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Mohamad Alallan</Authors>
+    <Company></Company>
+    <Description>
+      WebSockets for Xeeny, A framework for building and consuming services on devices and servers that support .net standard.
+      It is Cross Platform, Duplex, Multiple Transports, Asynchronous, Typed Proxies, Configurable, and Extendable
+    </Description>
+    <PackageLicenseUrl>https://github.com/MhAllan/Xeeny/blob/develop/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/MhAllan/Xeeny</PackageProjectUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/MhAllan/Xeeny/develop/nuget-logo.png</PackageIconUrl>
+    <PackageTags>C# csharp .net standard dotnetstandard duplex services cross-platform multiple-transport tcp udp framework xamarin</PackageTags>
+    <PackageReleaseNotes>internal updates</PackageReleaseNotes>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

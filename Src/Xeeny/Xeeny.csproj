@@ -8,12 +8,10 @@
 It is Cross Platform, Duplex, Multiple Transports, Asynchronous, Typed Proxies, Configurable, and Extendable</Description>
     <PackageLicenseUrl>https://github.com/MhAllan/Xeeny/blob/develop/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/MhAllan/Xeeny</PackageProjectUrl>
-    <PackageIconUrl>http://icons.iconarchive.com/icons/kyo-tux/delikate/64/Network-icon.png</PackageIconUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/MhAllan/Xeeny/develop/nuget-logo.png</PackageIconUrl>
     <PackageTags>C# csharp .net standard dotnetstandard duplex services cross-platform multiple-transport tcp udp framework xamarin</PackageTags>
     <PackageReleaseNotes>internal updates</PackageReleaseNotes>
-    <AssemblyVersion>1.2.3.0</AssemblyVersion>
-    <FileVersion>1.2.3.0</FileVersion>
-    <Version>1.2.3</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

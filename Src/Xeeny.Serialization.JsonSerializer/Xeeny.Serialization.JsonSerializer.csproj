@@ -10,7 +10,7 @@
     </Description>
     <PackageLicenseUrl>https://github.com/MhAllan/Xeeny/blob/develop/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/MhAllan/Xeeny</PackageProjectUrl>
-    <PackageIconUrl>http://icons.iconarchive.com/icons/kyo-tux/delikate/64/Network-icon.png</PackageIconUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/MhAllan/Xeeny/develop/nuget-logo.png</PackageIconUrl>
     <PackageTags>C# csharp .net standard dotnetstandard duplex services cross-platform multiple-transport tcp udp framework xamarin</PackageTags>
     <PackageReleaseNotes>first release</PackageReleaseNotes>
     <Version>1.1.0</Version>
