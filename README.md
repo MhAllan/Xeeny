@@ -49,6 +49,8 @@ It is Cross Platform, Duplex, Multiple Transports, Asynchronous, Typed Proxies, 
 Install-Package Xeeny
 
 For extensions
+
+Install-Package Xeeny.Http
 Install-Package Xeeny.Extentions.Loggers
 Install-Package Xeeny.Serialization.JsonSerializer
 Install-Package Xeeny.Serialization.ProtobufSerializer
