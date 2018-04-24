@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.UnitTest", "Xeeny.Uni
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.Transports", "Xeeny.Transports\Xeeny.Transports.csproj", "{73FF9275-0D8C-4EE5-818F-C3DC732C8B8E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.Http", "Xeeny.Http\Xeeny.Http.csproj", "{B50B2B78-1045-4915-826E-23D6C6BB3C3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.Http", "Xeeny.Http\Xeeny.Http.csproj", "{B50B2B78-1045-4915-826E-23D6C6BB3C3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
