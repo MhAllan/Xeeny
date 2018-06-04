@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Transports
+namespace Xeeny
 {
     static class BufferWriter
     {

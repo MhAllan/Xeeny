@@ -7,7 +7,7 @@ namespace Xeeny.Transports.Messages
 {
     public class Message
     {
-        const byte _minMessageSize = 1 + 16; //messagetype + id
+        public const byte MessageHeader = 1 + 16; //messagetype + id
 
         public readonly MessageType MessageType;
         public readonly Guid Id;
@@ -39,54 +39,35 @@ namespace Xeeny.Transports.Messages
 
         }
 
-        public ArraySegment<byte> GetDataAsSegment()
-        {
-            var data = GetData();
-            return new ArraySegment<byte>(data);
-        }
+        //public ArraySegment<byte> GetDataAsSegment()
+        //{
+        //    var data = GetData();
+        //    return new ArraySegment<byte>(data);
+        //}
 
-        public byte[] GetData()
-        {
-            var length = GetDataLength();
-            var data = new byte[length];
-            GetData(data, 0);
+        //public byte[] GetData()
+        //{
+        //    var length = GetDataLength();
+        //    var data = new byte[length];
+        //    GetData(data, 0);
 
-            return data;
-        }
+        //    return data;
+        //}
 
-        public int GetData(byte[] buffer, int offset)
-        {
-            var index = offset;
-            index = buffer.WriteByte(index, (byte)MessageType);
-            index = buffer.WriteGuid(index, Id);
-            if (Payload != null)
-            {
-                index = buffer.WriteInt32(index, Payload.Length);
-                index = buffer.WriteArray(index, Payload);
-            }
-            foreach (var kv in Properties)
-            {
-                index = buffer.WriteInt32(index, kv.Key);
-                index = buffer.WriteAsciiString(index, kv.Value);
-            }
+        //int GetDataLength()
+        //{
+        //    int length = _minMessageSize;
+        //    if (Payload != null)
+        //    {
+        //        length += Payload.Length;
+        //    }
 
-            return index - offset;
-        }
-
-        int GetDataLength()
-        {
-            int length = _minMessageSize;
-            if (Payload != null)
-            {
-                length += Payload.Length;
-            }
-
-            foreach (var kv in Properties)
-            {
-                length += 4; //key integer
-                length += Encoding.ASCII.GetByteCount(kv.Value);
-            }
-            return length;
-        }
+        //    foreach (var kv in Properties)
+        //    {
+        //        length += 4; //key integer
+        //        length += Encoding.ASCII.GetByteCount(kv.Value);
+        //    }
+        //    return length;
+        //}
     }
 }

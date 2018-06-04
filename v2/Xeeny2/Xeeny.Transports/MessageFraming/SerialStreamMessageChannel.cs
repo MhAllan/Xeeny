@@ -4,12 +4,10 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Xeeny.Transports.Channels;
-using Xeeny.Transports.Messages;
 
-namespace Xeeny.Transports.MessageChannels
+namespace Xeeny.Transports.Channels.MessageFraming
 {
-    public class SerialStreamMessageChannel : MessageChannel
+    public class SerialStreamMessageChannel : PipelineChannel
     {
         const int _minMessageSize = 5;
 
@@ -19,18 +17,18 @@ namespace Xeeny.Transports.MessageChannels
 
         readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
 
-        public SerialStreamMessageChannel(Channel channel, SerialStreamChannelSettings settings)
-            : base(channel)
+        public SerialStreamMessageChannel(Channel next, SerialStreamChannelSettings settings)
+            : base(next)
         {
-            if (settings.MaxMessageSize <= _minMessageSize)
+            if (settings.MaxMessageSize < _minMessageSize)
             {
                 throw new Exception($"{nameof(settings.MaxMessageSize)} must be larger than {_minMessageSize}");
             }
-            if (settings.SendBufferSize <= _minMessageSize)
+            if (settings.SendBufferSize < _minMessageSize)
             {
                 throw new Exception($"{nameof(settings.SendBufferSize)} must be larger than {_minMessageSize}");
             }
-            if (settings.ReceiveBufferSize <= _minMessageSize)
+            if (settings.ReceiveBufferSize < _minMessageSize)
             {
                 throw new Exception($"{nameof(settings.ReceiveBufferSize)} must be larger than {_minMessageSize}");
             }
@@ -48,44 +46,41 @@ namespace Xeeny.Transports.MessageChannels
             _sendBufferSize = settings.SendBufferSize;
         }
 
-        public override async Task Send(Message message, CancellationToken ct)
+        public override async Task Send(ArraySegment<byte> data, CancellationToken ct)
         {
-            var data = message.GetData();
-            var count = data.Length;
-            if (count == 0)
-                return;
-
             await _lock.WaitAsync();
+            var count = data.Count;
+            var all = count + 4;
+            var sendSize = Math.Min(_sendBufferSize, all);
+            var buffer = ArrayPool<byte>.Shared.Rent(sendSize);
             try
             {
-                var all = count + 4;
-                var sendSize = Math.Min(_sendBufferSize, all);
-                var array = new byte[sendSize];
-                var arrIndex = array.WriteInt32(0, count);
+                var arrIndex = buffer.WriteInt32(0, all);
                 var take = sendSize - arrIndex;
-                array.WriteArray(arrIndex, data, take);
+                var index = buffer.WriteArray(arrIndex, data.Array, take);
 
-                var segment = new ArraySegment<byte>(array);
+                var segment = new ArraySegment<byte>(buffer, 0, index);
 
-                await SendBytes(segment, ct);
+                await NextSend(segment, ct);
 
                 var sentCount = sendSize - 4;
 
                 while (!ct.IsCancellationRequested && sentCount < count)
                 {
                     sendSize = Math.Min(_sendBufferSize, count - sentCount);
-                    segment = new ArraySegment<byte>(data, sentCount, sendSize);
-                    await SendBytes(segment, ct);
+                    segment = new ArraySegment<byte>(data.Array, sentCount, sendSize);
+                    await NextSend(segment, ct);
                     sentCount += segment.Count;
                 }
             }
             finally
             {
                 _lock.Release();
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
-        public override async Task<Message> Receive(CancellationToken ct)
+        public override async Task<int> Receive(ArraySegment<byte> _null, CancellationToken ct)
         {
             var buffer = ArrayPool<byte>.Shared.Rent(_receiveBufferSize);
             try
@@ -98,7 +93,7 @@ namespace Xeeny.Transports.MessageChannels
                     var len = msgSize == -1 ? 4 : msgSize - read;
                     var segment = new ArraySegment<byte>(buffer, read, len);
 
-                    read += await ReceiveBytes(segment, ct);
+                    read += await NextReceive(segment, ct);
 
                     if (msgSize == -1 && read >= 4)
                     {
@@ -121,7 +116,7 @@ namespace Xeeny.Transports.MessageChannels
 
                 ct.ThrowIfCancellationRequested();
 
-                return new Message(buffer);
+                return msgSize;
             }
             finally
             {
