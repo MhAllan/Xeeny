@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Xeeny.Transports.Channels.MessageFraming
+namespace Xeeny.Transports.MessageFraming
 {
     public class SerialStreamChannelSettings
     {

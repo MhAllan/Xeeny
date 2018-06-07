@@ -8,27 +8,7 @@ namespace Xeeny
 {
     public static class MessageExtensions
     {
-        public static void AddProperty(this Message message, MessageProperty key, string value)
-        {
-            AddProperty(message, (ushort)key, value);
-        }
-
-        public static string TryGetProperty(this Message message, MessageProperty key)
-        {
-            return TryGetProperty(message, (ushort)key);
-        }
-
-        public static string GetProperty(this Message message, MessageProperty key)
-        {
-            return GetProperty(message, (ushort)key);
-        }
-
-        public static void RemoveProperty(this Message message, MessageProperty key)
-        {
-            RemoveProperty(message, (ushort)key);
-        }
-
-        public static void AddProperty(this Message message, ushort key, string value)
+        public static void AddProperty(this Message message, string key, string value)
         {
             var properties = message.Properties;
             if (properties.TryGetValue(key, out var _))
@@ -38,18 +18,18 @@ namespace Xeeny
             properties[key] = value;
         }
 
-        public static string TryGetProperty(this Message message, ushort key)
+        public static string TryGetProperty(this Message message, string key)
         {
             message.Properties.TryGetValue(key, out var result);
             return result;
         }
 
-        public static string GetProperty(this Message message, ushort key)
+        public static string GetProperty(this Message message, string key)
         {
             return message.Properties[key];
         }
 
-        public static void RemoveProperty(this Message message, ushort key)
+        public static void RemoveProperty(this Message message, string key)
         {
             message.Properties.Remove(key);
         }
@@ -58,5 +38,23 @@ namespace Xeeny
         {
             message.Properties.Clear();
         }
+
+        //public static int GetBinaryLength(this Message message)
+        //{
+        //    int length = Message.MessageHeader;
+        //    var payload = message.Payload;
+        //    if (payload != null)
+        //    {
+        //        length += payload.Length;
+        //    }
+
+        //    var props = message.Properties;
+        //    foreach (var kv in props)
+        //    {
+        //        length += Encoding.ASCII.GetByteCount(kv.Key);
+        //        length += Encoding.ASCII.GetByteCount(kv.Value);
+        //    }
+        //    return length;
+        //}
     }
 }
