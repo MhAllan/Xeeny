@@ -4,16 +4,14 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Xeeny.Transports;
 using Xeeny.Transports.Channels;
 using Xeeny.Transports.MessageFraming;
-using Xeeny;
 using Xunit;
-using Xeeny.Transports;
-using Xeeny.Transports.Messages;
 
-namespace UnitTest.Xeeny.Transports.Channels
+namespace UnitTest.Xeeny.Transports.MessageFraming
 {
-    public class SerialStreamChannelTest
+    public class ConcurrentStreamChannelTest
     {
         ArraySegment<byte> _anySegment => It.IsAny<ArraySegment<byte>>();
         CancellationToken _anyToken => It.IsAny<CancellationToken>();
@@ -36,21 +34,21 @@ namespace UnitTest.Xeeny.Transports.Channels
                 .Callback<ArraySegment<byte>, CancellationToken>((segment, token) =>
                 {
                     index = result.WriteSegment(index, segment);
-                    if(index == result.Length)
+                    if (index == result.Length)
                     {
                         evt.Set();
                     }
                 })
                 .Returns(Task.CompletedTask);
 
-            var settings = new SerialStreamChannelSettings
+            var settings = new ConcurrentStreamChannelSettings
             {
                 MaxMessageSize = maxMessageSize,
                 SendBufferSize = sendBufferSize,
                 ReceiveBufferSize = 5
             };
 
-            var channel = new SerialStreamMessageChannel(next.Object, settings);
+            var channel = new ConcurrentStreamMessageChannel(next.Object, settings);
 
             var msg = new string('*', msgSize);
             var message = Encoding.ASCII.GetBytes(msg);
@@ -90,21 +88,21 @@ namespace UnitTest.Xeeny.Transports.Channels
                     take = Math.Min(batch, segment.Count);
                     segment.Array.WriteArray(segment.Offset, buffer, index, take);
                     index += take;
-                    if(index == buffer.Length)
+                    if (index == buffer.Length)
                     {
                         evt.Set();
                     }
                 })
                 .Returns(() => Task.FromResult(take));
 
-            var settings = new SerialStreamChannelSettings
+            var settings = new ConcurrentStreamChannelSettings
             {
                 MaxMessageSize = maxMessageSize,
                 SendBufferSize = 5,
                 ReceiveBufferSize = receiveBufferSize
             };
 
-            var channel = new SerialStreamMessageChannel(next.Object, settings);
+            var channel = new ConcurrentStreamMessageChannel(next.Object, settings);
 
             var message = await channel.ReceiveMessage(default);
 
@@ -114,7 +112,5 @@ namespace UnitTest.Xeeny.Transports.Channels
 
             Assert.True(resultMsg == msg);
         }
-
-
     }
 }
