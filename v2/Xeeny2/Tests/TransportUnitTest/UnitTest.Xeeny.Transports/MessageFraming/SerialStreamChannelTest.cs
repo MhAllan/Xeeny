@@ -121,7 +121,7 @@ namespace UnitTest.Xeeny.Transports.MessageFraming
         [InlineData(50, 100, 50, 100)]
         [InlineData(50, 100, 100, 50)]
         [InlineData(10, 100, 100, 100)]
-        [InlineData(1000, 100, 100, 100)]
+        [InlineData(1000, 1000, 100, 100)]
         public async Task SendReceiveSuccess(int msgSize, int maxMessageSize, int sendBufferSize, int receiveBufferSize)
         {
             byte[] data = new byte[msgSize + 4];
@@ -145,9 +145,12 @@ namespace UnitTest.Xeeny.Transports.MessageFraming
                 .Callback<ArraySegment<byte>, CancellationToken>((segment, token) =>
                 {
                     readEvt.WaitOne();
-                    read = Math.Min(data.Length - readIndex, segment.Count);
+                    read = Math.Min(writeIndex - readIndex, segment.Count);
                     readIndex = segment.Array.WriteArray(segment.Offset, data, readIndex, read);
-                    writeEvt.Set();
+                    if (writeIndex == data.Length)
+                        readEvt.Set();
+                    else
+                        writeEvt.Set();
                 })
                 .Returns(() => Task.FromResult(read));
 
