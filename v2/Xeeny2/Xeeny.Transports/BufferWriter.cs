@@ -16,10 +16,6 @@ namespace Xeeny
         {
             return WriteArray(destination, index, BitConverter.GetBytes(number));
         }
-        public static int WriteInt16(this byte[] destination, in int index, in ushort number)
-        {
-            return WriteArray(destination, index, BitConverter.GetBytes(number));
-        }
         public static int WriteInt32(this byte[] destination, in int index, in int number)
         {
             return WriteArray(destination, index, BitConverter.GetBytes(number));

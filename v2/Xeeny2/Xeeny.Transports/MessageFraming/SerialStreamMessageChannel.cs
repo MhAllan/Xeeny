@@ -51,7 +51,7 @@ namespace Xeeny.Transports.MessageFraming
         public override async Task SendMessage(byte[] message, CancellationToken ct)
         {
             if (message == null || message.Length == 0)
-                return;
+                throw new ArgumentException(nameof(message));
 
             byte[] buffer = null;
             await _lock.WaitAsync();
