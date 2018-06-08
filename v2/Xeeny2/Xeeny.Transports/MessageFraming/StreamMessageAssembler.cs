@@ -16,6 +16,7 @@ namespace Xeeny.Transports.MessageFraming
         readonly int _totalSize;
         byte[] _buffer;
         int _index;
+        bool _isDisposed;
 
         public StreamMessageAssembler(Guid messageId, int totalSize)
         {
@@ -29,6 +30,9 @@ namespace Xeeny.Transports.MessageFraming
 
         public bool AddPartialMessage(ArraySegment<byte> segment)
         {
+            if (_isDisposed)
+                throw new Exception("Assembler is disposed");
+
             if(IsComplete)
             {
                 throw new Exception("Message is already complete");
@@ -53,15 +57,27 @@ namespace Xeeny.Transports.MessageFraming
 
         public byte[] GetMessage()
         {
-            if(!IsComplete)
+            if (_isDisposed)
+                throw new Exception("Assembler is disposed");
+
+            if (!IsComplete)
             {
                 throw new Exception("Message is not complete");
             }
-            return _buffer;
+
+            var result = _buffer.GetSubArray(0, _totalSize);
+
+            Dispose();
+
+            return result;
         }
 
         public void Dispose()
         {
+            if (_isDisposed)
+                return;
+
+            _isDisposed = true;
             ArrayPool<byte>.Shared.Return(_buffer);
             _buffer = null;
         }

@@ -10,7 +10,10 @@ namespace Xeeny.Transports.MessageFraming
 {
     public class ConcurrentStreamMessageChannel : MessageChannel
     {
-        const byte _minMessageSize = 4 + 16 + 4; //size + message id + total size
+        const byte _msgHeader = 4 + 16 + 4; //size + message id + total size
+        const byte _minMsgSize = _msgHeader + 1;
+
+        internal static byte HeaderSize => _msgHeader;
 
         readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         
@@ -26,17 +29,17 @@ namespace Xeeny.Transports.MessageFraming
         public ConcurrentStreamMessageChannel(Channel channel, ConcurrentStreamChannelSettings settings)
             : base(channel)
         {
-            if (settings.MaxMessageSize < _minMessageSize)
+            if (settings.MaxMessageSize < _msgHeader)
             {
-                throw new Exception($"{nameof(settings.MaxMessageSize)} must be larger than {_minMessageSize}");
+                throw new Exception($"{nameof(settings.MaxMessageSize)} must be larger than {_msgHeader}");
             }
-            if (settings.SendBufferSize < _minMessageSize)
+            if (settings.SendBufferSize < _msgHeader)
             {
-                throw new Exception($"{nameof(settings.SendBufferSize)} must be larger than {_minMessageSize}");
+                throw new Exception($"{nameof(settings.SendBufferSize)} must be larger than {_msgHeader}");
             }
-            if (settings.ReceiveBufferSize < _minMessageSize)
+            if (settings.ReceiveBufferSize < _msgHeader)
             {
-                throw new Exception($"{nameof(settings.ReceiveBufferSize)} must be larger than {_minMessageSize}");
+                throw new Exception($"{nameof(settings.ReceiveBufferSize)} must be larger than {_msgHeader}");
             }
             if (settings.MaxMessageSize < settings.SendBufferSize)
             {
@@ -51,7 +54,7 @@ namespace Xeeny.Transports.MessageFraming
             _sendBufferSize = settings.SendBufferSize;
             _receiveBufferSize = settings.ReceiveBufferSize;
 
-            _availableSize = _sendBufferSize - _minMessageSize;
+            _availableSize = _sendBufferSize - _msgHeader;
 
             _receiveTimeoutMS = settings.ReceiveTimeout.TotalMilliseconds;
             _assemblersCleanTimer = new Timer(CleanAssemblers, null, 0, _receiveTimeoutMS);
@@ -72,11 +75,11 @@ namespace Xeeny.Transports.MessageFraming
                 while(!ct.IsCancellationRequested && msgIndex < msgSize)
                 {
                     var take = Math.Min(msgSize - msgIndex, _availableSize);
-                    var partialMsgSize = _minMessageSize + take;
+                    var partialMsgSize = _msgHeader + take;
 
                     var index = buffer.WriteInt32(0, partialMsgSize);
-                    index = buffer.WriteInt32(index, msgSize);
                     index = buffer.WriteGuid(index, msgId);
+                    index = buffer.WriteInt32(index, msgSize);
                     index = buffer.WriteArray(index, message, msgIndex, take);
 
                     var segment = new ArraySegment<byte>(buffer, 0, partialMsgSize);
@@ -110,19 +113,21 @@ namespace Xeeny.Transports.MessageFraming
                     var read = 0;
                     var partialMsgSize = -1;
                     var msgSize = 0;
+                    var msgId = Guid.Empty;
 
                     var index = 0;
 
                     while (partialMsgSize == -1 || read < partialMsgSize)
                     {
-                        var len = partialMsgSize == -1 ? 8 : partialMsgSize - read;
+                        var len = partialMsgSize == -1 ? _msgHeader : partialMsgSize - read;
                         var segment = new ArraySegment<byte>(buffer, read, len);
 
                         read += await ReceiveBytes(segment, ct);
 
-                        if (partialMsgSize == -1 && read >= 8)
+                        if (partialMsgSize == -1 && read >= _msgHeader)
                         {
                             index = buffer.ReadInt32(0, out partialMsgSize);
+                            index = buffer.ReadGuid(index, out msgId);
                             index = buffer.ReadInt32(index, out msgSize);
 
                             if (msgSize > _maxMessageSize)
@@ -143,27 +148,21 @@ namespace Xeeny.Transports.MessageFraming
                         ct.ThrowIfCancellationRequested();
                     }
 
-                    if (msgSize == partialMsgSize - 4)
+                    var currentSize = partialMsgSize - _msgHeader;
+
+                    if (msgSize == currentSize)
                     {
-                        return buffer.GetSubArray(4, msgSize);
+                        return buffer.GetSubArray(_msgHeader, msgSize);
                     }
                     else
                     {
-                        index = buffer.ReadGuid(index, out var msgId);
-
-                        var nextIndex = 20; //skip partial size and message id and include message size
-
                         if (!_assemblers.TryGetValue(msgId, out var assembler))
                         {
-                            assembler = new StreamMessageAssembler(msgId, msgSize);
+                            assembler = new StreamMessageAssembler(msgId, msgSize); 
                             _assemblers.Add(msgId, assembler);
                         }
-                        else
-                        {
-                            nextIndex = _minMessageSize; //message size included, skip to payload
-                        }
-
-                        var nextSegment = new ArraySegment<byte>(buffer, nextIndex, partialMsgSize - nextIndex);
+                        
+                        var nextSegment = new ArraySegment<byte>(buffer, _msgHeader, currentSize);
 
                         if (assembler.AddPartialMessage(nextSegment))
                         {

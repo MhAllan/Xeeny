@@ -17,98 +17,70 @@ namespace UnitTest.Xeeny.Transports.MessageFraming
         CancellationToken _anyToken => It.IsAny<CancellationToken>();
 
         [Theory]
-        [InlineData(100, 1000, 100)]
-        [InlineData(10, 10, 10)]
-        [InlineData(10, 50, 30)]
-        [InlineData(1000, 20, 10)]
-        [InlineData(5, 5, 5)]
-        public async Task SendSuccess(int msgSize, int maxMessageSize, int sendBufferSize)
+        [InlineData(25, 50, 50, 50)]
+        [InlineData(30, 50, 50, 50)]
+        [InlineData(10, 50, 50, 50)]
+        [InlineData(100, 100, 100, 100)]
+        [InlineData(50, 100, 50, 100)]
+        [InlineData(50, 100, 100, 50)]
+        [InlineData(10, 100, 100, 100)]
+        [InlineData(1000, 1000, 100, 100)]
+        public async Task SendReceiveSuccess(int msgSize, int maxMessageSize, int sendBufferSize, int receiveBufferSize)
         {
-            var evt = new AutoResetEvent(false);
+            var header = ConcurrentStreamMessageChannel.HeaderSize;
+            var available = sendBufferSize - header;
+            var batches = (int)Math.Ceiling((double)msgSize / available);
+            var allHeaders = header * batches;
+            var size = msgSize + allHeaders;
 
-            var result = new byte[msgSize + 4];
-            var index = 0;
+            byte[] data = new byte[size];
+            var writeEvt = new AutoResetEvent(true);
+            int writeIndex = 0;
+            var readEvt = new AutoResetEvent(false);
+            int readIndex = 0;
+            int read = 0;
 
             var next = new Mock<Channel>(ConnectionSide.Client);
             next.Setup(x => x.Send(_anySegment, _anyToken))
                 .Callback<ArraySegment<byte>, CancellationToken>((segment, token) =>
                 {
-                    index = result.WriteSegment(index, segment);
-                    if (index == result.Length)
-                    {
-                        evt.Set();
-                    }
+                    writeEvt.WaitOne();
+                    writeIndex = data.WriteSegment(writeIndex, segment);
+                    readEvt.Set();
                 })
                 .Returns(Task.CompletedTask);
+
+            next.Setup(x => x.Receive(_anySegment, _anyToken))
+                .Callback<ArraySegment<byte>, CancellationToken>((segment, token) =>
+                {
+                    readEvt.WaitOne();
+                    read = Math.Min(writeIndex - readIndex, segment.Count);
+                    segment.Array.WriteArray(segment.Offset, data, readIndex, read);
+                    readIndex += read;
+                    if (writeIndex == data.Length)
+                        readEvt.Set();
+                    else
+                        writeEvt.Set();
+                })
+                .Returns(() => Task.FromResult(read));
 
             var settings = new ConcurrentStreamChannelSettings
             {
                 MaxMessageSize = maxMessageSize,
                 SendBufferSize = sendBufferSize,
-                ReceiveBufferSize = 5
-            };
-
-            var channel = new ConcurrentStreamMessageChannel(next.Object, settings);
-
-            var msg = new string('*', msgSize);
-            var message = Encoding.ASCII.GetBytes(msg);
-
-            await channel.SendMessage(message, default);
-
-            evt.WaitOne();
-
-            result.ReadInt32(0, out var size);
-            result.ReadSubArray(4, msgSize, out var resultArray);
-
-            Assert.True(size == msgSize);
-
-            var resultMsg = Encoding.ASCII.GetString(resultArray);
-
-            Assert.True(resultMsg == msg);
-        }
-
-        [Theory]
-        [InlineData(100, 1000, 100, 50)]
-        public async Task ReceiveSuccess(int msgSize, int maxMessageSize, int receiveBufferSize, int batch)
-        {
-            var evt = new AutoResetEvent(false);
-
-            var msg = new string('*', msgSize);
-            var bytes = Encoding.ASCII.GetBytes(msg);
-            var buffer = new byte[msgSize + 4];
-            buffer.WriteInt32(0, msgSize);
-            buffer.WriteArray(4, bytes);
-            var index = 0;
-            var take = 0;
-
-            var next = new Mock<Channel>(ConnectionSide.Client);
-            next.Setup(x => x.Receive(_anySegment, _anyToken))
-                .Callback<ArraySegment<byte>, CancellationToken>((segment, token) =>
-                {
-                    take = Math.Min(batch, segment.Count);
-                    segment.Array.WriteArray(segment.Offset, buffer, index, take);
-                    index += take;
-                    if (index == buffer.Length)
-                    {
-                        evt.Set();
-                    }
-                })
-                .Returns(() => Task.FromResult(take));
-
-            var settings = new ConcurrentStreamChannelSettings
-            {
-                MaxMessageSize = maxMessageSize,
-                SendBufferSize = 5,
                 ReceiveBufferSize = receiveBufferSize
             };
 
             var channel = new ConcurrentStreamMessageChannel(next.Object, settings);
 
-            var message = await channel.ReceiveMessage(default);
+            var msg = new string('*', msgSize);
+            var buffer = Encoding.ASCII.GetBytes(msg);
 
-            evt.WaitOne();
+            Task.Run(async () => await channel.SendMessage(buffer, default));
 
-            var resultMsg = Encoding.ASCII.GetString(message, 0, msgSize);
+            var resultBuffer = await channel.ReceiveMessage(default);
+
+            var resultMsg = Encoding.ASCII.GetString(resultBuffer);
 
             Assert.True(resultMsg == msg);
         }

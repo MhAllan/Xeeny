@@ -11,7 +11,7 @@ namespace Xeeny.Transports.MessageFraming
 {
     public class SerialStreamMessageChannel : MessageChannel
     {
-        const int _minMessageSize = 5;
+        const int _minMessageSize = 5; //4 header (msg size) and at least one payload
 
         readonly int _maxMessageSize;
         readonly int _sendBufferSize;
