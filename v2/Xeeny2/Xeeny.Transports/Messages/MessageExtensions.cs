@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Xeeny.Serialization.Abstractions;
 using Xeeny.Transports.Messages;
 
 namespace Xeeny
@@ -38,23 +37,5 @@ namespace Xeeny
         {
             message.Properties.Clear();
         }
-
-        //public static int GetBinaryLength(this Message message)
-        //{
-        //    int length = Message.MessageHeader;
-        //    var payload = message.Payload;
-        //    if (payload != null)
-        //    {
-        //        length += payload.Length;
-        //    }
-
-        //    var props = message.Properties;
-        //    foreach (var kv in props)
-        //    {
-        //        length += Encoding.ASCII.GetByteCount(kv.Key);
-        //        length += Encoding.ASCII.GetByteCount(kv.Value);
-        //    }
-        //    return length;
-        //}
     }
 }

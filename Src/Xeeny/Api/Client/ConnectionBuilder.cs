@@ -8,6 +8,7 @@ using Xeeny.Descriptions;
 using Xeeny.Connections;
 using Xeeny.Proxies.ProxyGeneration;
 using Microsoft.Extensions.Logging;
+using System.Threading;
 
 namespace Xeeny.Api.Client
 {
@@ -23,20 +24,20 @@ namespace Xeeny.Api.Client
             TypeDescription<TService>.ValidateAsContract(null);
         }
 
-        public virtual async Task<TService> CreateConnection(bool open = true)
+        public virtual async Task<TService> CreateConnection(bool open = true, CancellationToken ct = default)
         {
             Validate();
 
             var msgBuilder = new MessageBuilder(Serializer);
 
-            var transport = TransportFactory.CreateTransport(LoggerFactory);
+            var transport = TransportFactory.CreateTransport();
 
             var client = new ClientConnection(transport, msgBuilder);
 
             var proxy = new ProxyEmitter<TService, ClientConnection>(client).CreateProxy();
             if (open)
             {
-                await((IConnection)proxy).Connect();
+                await((IConnection)proxy).Connect(ct);
             }
 
             return proxy;

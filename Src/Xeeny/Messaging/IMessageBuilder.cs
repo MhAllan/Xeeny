@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Messaging
 {

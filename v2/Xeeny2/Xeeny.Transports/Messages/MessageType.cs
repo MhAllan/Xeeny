@@ -6,9 +6,11 @@ namespace Xeeny.Transports.Messages
 {
     public enum MessageType
     {
+        Empty,
         Connect,
         Negotiate,
         KeepAlive,
+        OneWayRequest,
         Request,
         Response,
         Error,

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xeeny.Messaging;
 using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Connections
 {
@@ -17,17 +19,17 @@ namespace Xeeny.Connections
             _msgBuilder = msgBuilder;
         }
 
-        public override async Task Connect()
+        public override async Task Connect(CancellationToken ct = default)
         {
-            await this.Transport.Connect();
-            this.Transport.Listen();
-            this.Transport.StartPing();
+            await Transport.Connect(ct);
+            Transport.Listen();
+            Transport.StartPing();
         }
 
         public void SendOneWay(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateOneWayRequest(operation, parameters);
-            var task = this.Transport.SendOneWay(msg);
+            var task = Transport.SendMessage(msg);
             task.ConfigureAwait(false);
             task.Wait();
         }
@@ -35,7 +37,7 @@ namespace Xeeny.Connections
         public void SendAndWait(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateRequest(operation, parameters);
-            var task = this.Transport.SendRequest(msg);
+            var task = Transport.SendMessage(msg);
             task.ConfigureAwait(false);
             task.Wait();
         }
@@ -44,7 +46,7 @@ namespace Xeeny.Connections
         {
             var msg = _msgBuilder.CreateRequest(operation, parameters);
 
-            var task = this.Transport.SendRequest(msg);
+            var task = Transport.Invoke(msg);
             task.ConfigureAwait(false);
             var response = task.Result ;
 
@@ -56,22 +58,27 @@ namespace Xeeny.Connections
         public async Task SendOneWayAsync(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateOneWayRequest(operation, parameters);
-            await this.Transport.SendOneWay(msg);
+            await Transport.SendMessage(msg);
         }
 
         public async Task SendAndWaitAsync(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateRequest(operation, parameters);
-            await this.Transport.SendRequest(msg);
+            await Transport.Invoke(msg);
         }
 
         public async Task<TResponse> InvokeAsync<TResponse>(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateRequest(operation, parameters);
-            var response = await this.Transport.SendRequest(msg);
+            var response = await Transport.Invoke(msg);
             var result = _msgBuilder.UnpackResponse<TResponse>(response.Payload);
 
             return result;
+        }
+
+        protected override void OnRequestReceived(ITransport socket, Message message)
+        {
+            throw new Exception("Something went wrong, Client should not receive request message!");
         }
     }
 }

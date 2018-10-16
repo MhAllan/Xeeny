@@ -2,9 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Src\Xeeny\Xeeny.csproj" />
     <ProjectReference Include="..\Xeeny.Transports\Xeeny.Transports.csproj" />
   </ItemGroup>
 

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Xeeny.Api.Client
 {
@@ -35,7 +36,7 @@ namespace Xeeny.Api.Client
             _singleton = singleton;
         }
 
-        public override async Task<TService> CreateConnection(bool open = true)
+        public override async Task<TService> CreateConnection(bool open = true, CancellationToken ct = default)
         {
             Validate();
 
@@ -53,7 +54,7 @@ namespace Xeeny.Api.Client
             instanceContextFactory.InstanceCreated += OnInstanceFactoryInstanceCreate;
             instanceContextFactory.SessionInstanceRemoved += OnInstanceFactorySessionInstanceRemoved;
 
-            var transport = TransportFactory.CreateTransport(LoggerFactory);
+            var transport = TransportFactory.CreateTransport();
 
             var duplexClient = new DuplexClientConnection(transport, msgBuilder, instanceContextFactory);
 
@@ -61,7 +62,7 @@ namespace Xeeny.Api.Client
 
             if (open)
             {
-                await ((IConnection)proxy).Connect();
+                await ((IConnection)proxy).Connect(ct);
             }
 
             return proxy;

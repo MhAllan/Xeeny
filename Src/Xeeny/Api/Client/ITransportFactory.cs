@@ -8,6 +8,6 @@ namespace Xeeny.Api.Client
 {
     public interface ITransportFactory
     {
-        ITransport CreateTransport(ILoggerFactory loggerFactory);
+        ITransport CreateTransport();
     }
 }

@@ -4,18 +4,22 @@ using System.Threading.Tasks;
 using System.Linq;
 using Xeeny.Messaging;
 using Xeeny.Transports;
+using Xeeny.Transports.Connections;
+using Xeeny.Transports.Messages;
+using System.Threading;
 
 namespace Xeeny.Connections
 {
     public abstract class ConnectionBase : IConnection
     {
-        public event Action<IConnectionSession> SessionEnded;
-        public event Action<IConnectionObject> StateChanged;
+        public event SessionEnded SessionEnded;
+        public event ConnectionStateChanged StateChanged;
 
         public ConnectionState State => Transport.State;
 
         public string ConnectionId => Transport.ConnectionId;
         public string ConnectionName => Transport.ConnectionName;
+        public ConnectionSide ConnectionSide => Transport.ConnectionSide;
 
         protected readonly ITransport Transport;
 
@@ -26,31 +30,28 @@ namespace Xeeny.Connections
             Transport.RequestReceived += OnRequestReceived;
         }
 
-        protected virtual void OnRequestReceived(ITransport socket, Message message)
-        {
-            //Nothing, Implement in subclasses
-        }
+        protected abstract void OnRequestReceived(ITransport socket, Message message);
 
-        private void OnTransportStateChanged(IConnectionObject obj)
+        void OnTransportStateChanged(Transports.Connections.IConnection connection)
         {
-            this.StateChanged?.Invoke(this);
+            StateChanged?.Invoke(this);
 
-            if(State >= ConnectionState.Closing)
+            if(State == ConnectionState.Closing)
             {
-                this.SessionEnded?.Invoke(this);
+                SessionEnded?.Invoke(this);
             }
         }
 
-        public abstract Task Connect();
+        public abstract Task Connect(CancellationToken ct = default);
 
-        public void Close()
+        public Task Close(CancellationToken ct = default)
         {
-            this.Transport.Close();
+            return Transport.Close(ct);
         }
 
         public void Dispose()
         {
-            this.Transport.Dispose();
+            this.Transport.Close();
         }
     }
 }

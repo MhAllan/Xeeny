@@ -1,401 +1,408 @@
-﻿//using Microsoft.Extensions.Logging;
-//using System;
-//using System.Collections.Generic;
-//using System.Text;
-//using System.Threading;
-//using System.Threading.Tasks;
-//using Xeeny.ResponseProviders;
-//using Xeeny.Transports.Channels;
-//using Xeeny.Transports.MessageChannels;
-//using Xeeny.Transports.Messages;
+﻿using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Xeeny.ResponseProviders;
+using Xeeny.Transports.Channels;
+using Xeeny.Transports.Connections;
+using Xeeny.Transports.Messages;
 
-//namespace Xeeny.Transports
-//{
-//    public class Transport : ITransport
-//    {
-//        public event Action<ITransport, Message> RequestReceived;
-//        public event ConnectionStateChanged StateChanged;
+namespace Xeeny.Transports
+{
+    public abstract class Transport : ITransport
+    {
+        public event RequestReceived RequestReceived;
+        public event ConnectionStateChanged StateChanged;
+        public event NegotiateMessageReceived NegotiateMessageReceived;
 
-//        public string ConnectionId { get; }
-//        public string ConnectionName { get; }
-//        public ConnectionSide ConnectionSide => _channel.ConnectionSide;
+        public string ConnectionId
+        {
+            get => Channel.ConnectionId;
+            internal set => Channel.ConnectionId = value;
+        }
 
-//        ConnectionState _state;
-//        public ConnectionState State
-//        {
-//            get => _state;
-//            protected set
-//            {
-//                if (_state != value)
-//                {
-//                    _state = value;
-//                    LogTrace($"State changed to {value}");
-//                    OnStateChanged();
-//                }
-//            }
-//        }
+        public string ConnectionName
+        {
+            get => Channel.ConnectionName;
+            internal set => Channel.ConnectionName = value;
+        }
 
-//        readonly SemaphoreSlim _stateLock = new SemaphoreSlim(1, 1);
-//        readonly Message _keepAliveMessage = new Message(MessageType.KeepAlive);
-//        readonly Message _closeMessage = new Message(MessageType.Close);
+        public ILoggerFactory LoggerFactory
+        {
+            get => Channel.LoggerFactory;
+            internal set => Channel.LoggerFactory = value;
+        }
 
-//        readonly TimeSpan _timeout;
-//        readonly TimeSpan _receiveTimeout;
-//        readonly TimeSpan _keepAliveInterval;
-//        readonly ResponseProvider<Message> _responseProvider = new ResponseProvider<Message>();
-//        readonly ILogger _logger;
+        public ConnectionSide ConnectionSide => Channel.ConnectionSide;
 
-//        bool _isSending;
+        public TransportChannel Channel { get; }
 
-//        readonly MessageChannel _channel;
+        ConnectionState _state;
+        public ConnectionState State
+        {
+            get => _state;
+            protected set
+            {
+                if (_state != value)
+                {
+                    _state = value;
+                    LogTrace($"State changed to {value}");
+                    OnStateChanged();
+                }
+            }
+        }
 
-//        public Transport(MessageChannel channel, TransportSettings settings, ILogger logger)
-//        {
-//            _timeout = settings.Timeout;
-//            _receiveTimeout = settings.ReceiveTimeout;
-//            _keepAliveInterval = settings.KeepAliveInterval;
-//            _logger = logger;
+        static readonly byte[] _keepAliveMessage = Message.KeepAlive.GetData();
 
-//            ConnectionId = Guid.NewGuid().ToString();
-//            var nameFormatter = settings.ConnectionNameFormatter;
-//            ConnectionName = nameFormatter == null ? $"Connection ({ConnectionId})" : nameFormatter(ConnectionId);
+        readonly SemaphoreSlim _stateLock = new SemaphoreSlim(1, 1);
 
-//            _channel = channel;
-//            _channel.ConnectionId = ConnectionId;
-//            _channel.ConnectionName = ConnectionName;
-//        }
+        public TransportSettings Settings { get; }
+        public TimeSpan Timeout { get; }
+        public TimeSpan ReceiveTimeout { get; }
+        public TimeSpan KeepAliveInterval { get; }
 
-//        public async Task Connect()
-//        {
-//            if (CanConnect())
-//            {
-//                await _stateLock.WaitAsync();
-//                try
-//                {
-//                    if (CanConnect())
-//                    {
-//                        LogTrace("Connecting...");
-//                        State = ConnectionState.Connecting;
-//                        using (var cts = new CancellationTokenSource(_timeout))
-//                        using (cts.Token.Register(Close, new CloseBehavior(false, "Connect Timeout")))
-//                        {
-//                            var ct = cts.Token;
-//                            await _channel.Connect(ct);
-//                            State = ConnectionState.Connected;
-//                        }
-//                    }
-//                }
-//                catch (Exception ex)
-//                {
-//                    LogError(ex, "Connection failed");
-//                    Close(new CloseBehavior(false, "Connection failed"));
-//                    throw;
-//                }
-//                finally
-//                {
-//                    _stateLock.Release();
-//                }
-//            }
-//        }
+        readonly ResponseProvider<Message> _responseProvider = new ResponseProvider<Message>();
+        readonly ILogger _logger;
 
-//        public async void Listen()
-//        {
-//            try
-//            {
-//                while (this.State == ConnectionState.Connected)
-//                {
-//                    LogTrace($"Receiving...");
+        bool _isSending;
 
-//                    using (var cts = new CancellationTokenSource(_receiveTimeout))
-//                    using (cts.Token.Register(Close, new CloseBehavior(true, "Receive timeout")))
-//                    {
-//                        var message = await _channel.Receive(cts.Token);
+        public Transport(TransportChannel channel, TransportSettings settings, ILoggerFactory loggerFactory)
+        {
+            Channel = channel;
 
-//                        cts.Token.ThrowIfCancellationRequested(); //in case channels implementation is bad
+            Timeout = settings.Timeout;
+            ReceiveTimeout = settings.ReceiveTimeout;
+            KeepAliveInterval = settings.KeepAliveInterval;
 
-//                        LogTrace("Received message", message);
+            ConnectionId = Guid.NewGuid().ToString();
+            var nameFormatter = settings.ConnectionNameFormatter;
+            ConnectionName = ConnectionSide == ConnectionSide.Client ?
+                                nameFormatter == null ?
+                                $"Connection ({ConnectionId})" : nameFormatter(ConnectionId) :
+                                nameFormatter == null ?
+                                $"Server Connection ({ConnectionId})" : nameFormatter(ConnectionId);
 
-//                        var messageType = message.MessageType;
+            LoggerFactory = loggerFactory;
 
-//                        switch (messageType)
-//                        {
-//                            case MessageType.KeepAlive:
-//                                {
-//                                    break;
-//                                }
-//                            case MessageType.Close:
-//                                {
-//                                    Close(new CloseBehavior(false, "Close message received")); break;
-//                                }
-//                            case MessageType.Negotiate:
-//                                {
-//                                    break;
-//                                }
-//                            case MessageType.Request:
-//                                {
-//                                    OnRequestReceived(message);
-//                                    break;
-//                                }
-//                            case MessageType.Response:
-//                            case MessageType.Error:
-//                                {
-//                                    _responseProvider.SetResponse(message.Id, message);
-//                                    break;
-//                                }
-//                            default: throw new NotSupportedException(messageType.ToString());
-//                        }
-//                    }
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                if (this.State == ConnectionState.Connected)
-//                {
-//                    LogError(ex, "Stopped receiving");
-//                    Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
-//                }
-//                else
-//                {
-//                    LogTrace($"stopped receiving");
-//                }
-//            }
-//        }
+            _logger = LoggerFactory.CreateLogger(this.GetType());
 
-//        public async void StartPing()
-//        {
-//            while (this.State == ConnectionState.Connected)
-//            {
-//                try
-//                {
-//                    await Task.Delay(_keepAliveInterval);
+            Settings = settings;
+        }
 
-//                    if (this.State == ConnectionState.Connected)
-//                    {
-//                        if (_isSending)
-//                            continue;
+        protected abstract Task SendMessage(byte[] message, CancellationToken ct);
+        protected abstract Task<byte[]> ReceiveMessage(CancellationToken ct);
 
-//                        using (var cts = new CancellationTokenSource(_timeout))
-//                        using (cts.Token.Register(Close, new CloseBehavior(false, "KeepAlive Timeout")))
-//                        {
-//                            await _channel.Send(_keepAliveMessage, cts.Token);
-//                        }
-//                    }
-//                }
-//                catch (Exception ex)
-//                {
-//                    LogError(ex, "KeepAlive failed");
-//                    Close(false);
-//                }
-//            }
-//        }
+        public async Task Connect(CancellationToken ct = default)
+        {
+            if (CanConnect())
+            {
+                await _stateLock.WaitAsync(ct);
+                try
+                {
+                    if (CanConnect())
+                    {
+                        LogTrace("Connecting...");
+                        State = ConnectionState.Connecting;
+                        using (ct.Register(TimeoutClose, new CloseBehavior(false, "Connect Timeout")))
+                        {
+                            await Channel.Connect(ct);
+                            State = ConnectionState.Connected;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex, "Connection failed");
+                    await Close(new CloseBehavior(false, "Connection failed"), default);
+                    throw;
+                }
+                finally
+                {
+                    _stateLock.Release();
+                }
+            }
+        }
 
-//        public async Task SendOneWay(Message message)
-//        {
-//            LogTrace("Send OneWay", message);
+        public async void Listen()
+        {
+            try
+            {
+                while (State == ConnectionState.Connected)
+                {
+                    LogTrace($"Receiving...");
 
-//            //if (message.MessageType != MessageType.OneWayRequest)
-//            //{
-//            //    throw new Exception($"Invalid message wrapping");
-//            //}
+                    using (var cts = new CancellationTokenSource(ReceiveTimeout))
+                    using (cts.Token.Register(TimeoutClose, new CloseBehavior(true, "Receive timeout")))
+                    {
+                        var msgBytes = await ReceiveMessage(cts.Token);
 
-//            await SendMessage(message);
-//        }
+                        var message = new Message(msgBytes);
 
-//        public async Task SendResponse(Message message)
-//        {
-//            LogTrace("Send Response", message);
+                        cts.Token.ThrowIfCancellationRequested(); //in case channels implementation is bad
 
-//            if (message.MessageType != MessageType.Response)
-//            {
-//                throw new Exception($"Invalid message wrapping");
-//            }
+                        LogTrace("Received message", message);
 
-//            await SendMessage(message);
-//        }
+                        var messageType = message.MessageType;
 
-//        public async Task SendError(Message message)
-//        {
-//            LogTrace("Send Error", message);
+                        switch (messageType)
+                        {
+                            case MessageType.Negotiate:
+                                {
+                                    OnNegotiateReceived(message);
+                                    break;
+                                }
+                            case MessageType.KeepAlive:
+                                {
+                                    OnKeepAliveReceived(message);
+                                    break;
+                                }
+                            case MessageType.Close:
+                                {
+                                    await Close(new CloseBehavior(false, "Close message received"), default);
+                                    break;
+                                }
+                            case MessageType.Request:
+                                {
+                                    OnRequestReceived(message);
+                                    break;
+                                }
+                            case MessageType.Response:
+                            case MessageType.Error:
+                                {
+                                    _responseProvider.SetResponse(message.Id, message);
+                                    break;
+                                }
+                            default: throw new NotSupportedException(messageType.ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (State == ConnectionState.Connected)
+                {
+                    LogError(ex, "Stopped receiving");
+                    await Close(new CloseBehavior(true, $"Listenning error {ex.Message}"));
+                }
+                else
+                {
+                    LogTrace($"stopped receiving");
+                }
+            }
+        }
 
-//            if (message.MessageType != MessageType.Error)
-//            {
-//                throw new Exception($"Invalid message wrapping");
-//            }
+        public async void StartPing()
+        {
+            while (State == ConnectionState.Connected)
+            {
+                try
+                {
+                    await Task.Delay(KeepAliveInterval);
 
-//            await SendMessage(message);
-//        }
+                    if (State == ConnectionState.Connected)
+                    {
+                        if (_isSending)
+                            continue;
 
-//        public async Task<Message> SendRequest(Message message)
-//        {
-//            LogTrace("Sending Request", message);
+                        using (var cts = new CancellationTokenSource(Timeout))
+                        using (cts.Token.Register(TimeoutClose, new CloseBehavior(false, "KeepAlive Timeout")))
+                        {
+                            await SendMessage(_keepAliveMessage, cts.Token);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex, "KeepAlive failed");
+                    await Close(new CloseBehavior(false, $"Sending KeepAlive failed"), default);
+                }
+            }
+        }
 
-//            if (message.MessageType != MessageType.Request)
-//            {
-//                throw new Exception($"Message Id of message type {message.MessageType} can not be empty");
-//            }
+        public async Task SendMessage(Message message)
+        {
+            LogTrace("Sending", message);
 
-//            var context = _responseProvider.CreateResponseContext(message.Id, _timeout);
-//            try
-//            {
-//                await SendMessage(message);
+            try
+            {
+                using (var cts = new CancellationTokenSource(Timeout))
+                using (cts.Token.Register(TimeoutClose, new CloseBehavior(true, "Send message failed")))
+                {
+                    _isSending = true;
+                    var msg = message.GetData();
+                    await SendMessage(msg, cts.Token);
+                }
+            }
+            finally
+            {
+                _isSending = false;
+            }
+        }
 
-//                var response = context.GetResponse();
+        public async Task<Message> Invoke(Message message)
+        {
+            LogTrace("Invoking", message);
 
-//                return response;
-//            }
-//            catch (Exception ex)
-//            {
-//                LogError(ex, message, "Failed to send and get response");
-//                throw;
-//            }
-//            finally
-//            {
-//                _responseProvider.RemoveResponseContext(context);
-//            }
-//        }
+            var context = _responseProvider.CreateResponseContext(message.Id, Timeout);
+            try
+            {
+                await SendMessage(message);
 
-//        public void Close()
-//        {
-//            Close(new CloseBehavior(true, "Close or Dispose is called"));
-//        }
+                var response = context.GetResponse();
 
-//        async void Close(object closeBehavior)
-//        {
-//            var behavior = (CloseBehavior)closeBehavior;
-//            if (CanClose())
-//            {
-//                await _stateLock.WaitAsync();
-//                try
-//                {
-//                    if (CanClose())
-//                    {
-//                        LogTrace($"Closing because: {behavior.Reason}");
-//                        State = ConnectionState.Closing;
-//                        if (behavior.SendClose)
-//                        {
-//                            try
-//                            {
-//                                await SendMessage(_closeMessage);
-//                            }
-//                            catch { }
-//                            await _channel.Close(default);
-//                        }
-//                    }
-//                }
-//                catch (Exception ex)
-//                {
-//                    LogError(ex, "Graceful close failed");
-//                }
-//                finally
-//                {
-//                    State = ConnectionState.Closed;
-//                    _stateLock.Release();
-//                }
-//            }
-//        }
+                return response;
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, message, "Failed to send and get response");
+                throw;
+            }
+            finally
+            {
+                _responseProvider.RemoveResponseContext(context);
+            }
+        }
 
-//        public void Dispose() => Close();
+        public virtual Task Close(CancellationToken ct)
+        {
+            return Close(new CloseBehavior(true, "Close or Dispose is called"), ct);
+        }
 
-//        bool CanConnect()
-//        {
-//            if (State == ConnectionState.Connecting || State == ConnectionState.Connected)
-//                return false;
+        async void TimeoutClose(object closeBehavior)
+        {
+            await Close((CloseBehavior)closeBehavior);
+        }
 
-//            if (State != ConnectionState.None)
-//                throw new Exception($"Can not connect, socket is closed");
+        async Task Close(CloseBehavior closeBehavior, CancellationToken ct = default)
+        {
+            if (CanClose())
+            {
+                await _stateLock.WaitAsync(ct);
+                try
+                {
+                    if (CanClose())
+                    {
+                        LogTrace($"Closing because: {closeBehavior.Reason}");
+                        State = ConnectionState.Closing;
+                        if (closeBehavior.SendClose)
+                        {
+                            try
+                            {
+                                await SendMessage(Message.Close);
+                            }
+                            catch { }
+                            await Channel.Close(ct);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex, "Graceful close failed");
+                }
+                finally
+                {
+                    State = ConnectionState.Closed;
+                    _stateLock.Release();
+                }
+            }
+        }
 
-//            return true;
-//        }
+        protected virtual void OnStateChanged()
+        {
+            StateChanged?.Invoke(this);
+        }
 
-//        bool CanClose()
-//        {
-//            return State < ConnectionState.Closing;
-//        }
+        protected virtual void OnKeepAliveReceived(Message msg)
+        {
+        }
 
-//        async Task SendMessage(Message message)
-//        {
-//            try
-//            {
-//                using (var cts = new CancellationTokenSource(_timeout))
-//                using (cts.Token.Register(Close, new CloseBehavior(true, "Send message failed")))
-//                {
-//                    _isSending = true;
-//                    await _channel.Send(message, cts.Token);
-//                }
-//            }
-//            finally
-//            {
-//                _isSending = false;
-//            }
-//        }
+        protected virtual void OnNegotiateReceived(Message msg)
+        {
+            NegotiateMessageReceived?.Invoke(this, msg);
+        }
 
-//        protected virtual void OnStateChanged()
-//        {
-//            this.StateChanged?.Invoke(this);
-//        }
+        protected virtual void OnRequestReceived(Message message)
+        {
+            RequestReceived?.Invoke(this, message);
+        }
 
-//        protected virtual void OnRequestReceived(Message message)
-//        {
-//            this.RequestReceived?.Invoke(this, message);
-//        }
+        bool CanConnect()
+        {
+            if (State == ConnectionState.Connecting || State == ConnectionState.Connected)
+                return false;
 
-//        protected void LogTrace(string msg)
-//        {
-//            if (_logger.IsEnabled(LogLevel.Trace))
-//                _logger.LogTrace($"{ConnectionName}: {msg}");
-//        }
+            if (State != ConnectionState.None)
+                throw new Exception($"Can not connect, socket is closed");
 
-//        protected void LogTrace(string msg, Message message)
-//        {
-//            if (_logger.IsEnabled(LogLevel.Trace))
-//                _logger.LogTrace(MessageToString(msg, message));
-//        }
+            return true;
+        }
 
-//        protected void LogError(Exception ex, string error)
-//        {
-//            if (_logger.IsEnabled(LogLevel.Error))
-//                _logger.LogError(ex, $"{ConnectionName}: {error}");
-//        }
+        bool CanClose()
+        {
+            return State < ConnectionState.Closing;
+        }
 
-//        protected void LogError(Exception ex, Message message, string error)
-//        {
-//            if (_logger.IsEnabled(LogLevel.Error))
-//                _logger.LogError(ex, MessageToString(error, message));
-//        }
+        protected void LogTrace(string msg)
+        {
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace($"{ConnectionName}: {msg}");
+        }
 
-//        string MessageToString(string message, Message msg)
-//        {
-//            return Concat(ConnectionName, message, msg.MessageType, msg.Id, msg.Payload?.Length);
-//        }
+        protected void LogTrace(string msg, Message message)
+        {
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace(MessageToString(msg, message));
+        }
 
-//        string Concat(params object[] objs)
-//        {
-//            if (objs != null && objs.Length > 0)
-//            {
-//                var sb = new StringBuilder();
-//                foreach (var obj in objs)
-//                {
-//                    if (obj != null)
-//                    {
-//                        sb.Append(obj).Append(" ");
-//                    }
-//                }
-//                var result = sb.ToString();
-//                return result;
-//            }
-//            return string.Empty;
-//        }
-//    }
+        protected void LogError(Exception ex, string error)
+        {
+            if (_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError(ex, $"{ConnectionName}: {error}");
+        }
 
-//    class CloseBehavior
-//    {
-//        public readonly bool SendClose;
-//        public readonly string Reason;
+        protected void LogError(Exception ex, Message message, string error)
+        {
+            if (_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError(ex, MessageToString(error, message));
+        }
 
-//        public CloseBehavior(bool sendClose, string reason)
-//        {
-//            SendClose = sendClose;
-//            Reason = reason;
-//        }
-//    }
-//}
+        string MessageToString(string message, Message msg)
+        {
+            return Concat(ConnectionName, message, msg.MessageType, msg.Id, msg.Payload?.Length);
+
+            string Concat(params object[] objs)
+            {
+                if (objs != null && objs.Length > 0)
+                {
+                    var sb = new StringBuilder();
+                    foreach (var obj in objs)
+                    {
+                        if (obj != null)
+                        {
+                            sb.Append(obj).Append(" ");
+                        }
+                    }
+                    var result = sb.ToString();
+                    return result;
+                }
+                return string.Empty;
+            }
+        }
+
+        public void Dispose() => Close(default);
+    }
+
+    class CloseBehavior
+    {
+        public readonly bool SendClose;
+        public readonly string Reason;
+
+        public CloseBehavior(bool sendClose, string reason)
+        {
+            SendClose = sendClose;
+            Reason = reason;
+        }
+    }
+}

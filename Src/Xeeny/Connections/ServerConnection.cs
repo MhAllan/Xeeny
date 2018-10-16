@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Xeeny.Proxies.ProxyGeneration;
 using Microsoft.Extensions.Logging;
 using Xeeny.Transports;
+using Xeeny.Transports.Messages;
+using System.Threading;
 
 namespace Xeeny.Connections
 {
@@ -32,9 +34,9 @@ namespace Xeeny.Connections
             _logger = logger;
         }
 
-        public override async Task Connect()
+        public override async Task Connect(CancellationToken ct = default)
         {
-            await this.Transport.Connect();
+            await this.Transport.Connect(ct);
             this.Transport.Listen();
         }
 
@@ -80,7 +82,7 @@ namespace Xeeny.Connections
 
                         if (result.HasResponse)
                         {
-                            await this.Transport.SendResponse(result.Response);
+                            await this.Transport.SendMessage(result.Response);
                         }
                         break;
                     }
@@ -96,14 +98,13 @@ namespace Xeeny.Connections
         public void SendOneWay(string operation, params object[] parameters)
         {
             var request = _msgBuilder.CreateOneWayRequest(operation, parameters);
-            //server doesn't wait.
-            this.Transport.SendOneWay(request);
+            Transport.SendMessage(request);
         }
 
         public async Task SendOneWayAsync(string operation, params object[] parameters)
         {
             var msg = _msgBuilder.CreateOneWayRequest(operation, parameters);
-            await this.Transport.SendOneWay(msg);
+            await Transport.SendMessage(msg);
         }
 
         public TCallback GetCallback<TCallback>()

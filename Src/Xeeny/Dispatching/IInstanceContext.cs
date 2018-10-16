@@ -2,7 +2,7 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Dispatching
 {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Xeeny.Serialization;
 using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Messaging
 {
@@ -19,27 +20,35 @@ namespace Xeeny.Messaging
         {
             var payload = PackParametersWithAddress(operation, parameters);
 
-            return new Message(MessageType.OneWayRequest, Guid.NewGuid(), payload);
+            var msg = Message.CreateRequest(payload);
+
+            return msg;
         }
 
         public Message CreateRequest(string operation, object[] parameters)
         {
             var payload = PackParametersWithAddress(operation, parameters);
 
-            return new Message(MessageType.Request, Guid.NewGuid(), payload);
+            var msg = Message.CreateRequest(payload);
+
+            return msg;
         }
 
 
         public Message CreateResponse(Guid id, object response)
         {
             var payload = PackParameters(response);
-            return new Message(MessageType.Response, id, payload);
+            var msg = Message.CreateResponse(id, payload);
+
+            return msg;
         }
 
         public Message CreateError(Guid id, string error)
         {
             var payload = PackParameters(error);
-            return new Message(MessageType.Error, id, payload);
+            var msg = Message.CreateError(id, payload);
+
+            return msg;
         }
 
         public string UnpackAddress(Message message, out ArraySegment<byte> parameters)

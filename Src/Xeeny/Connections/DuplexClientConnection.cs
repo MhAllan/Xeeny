@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Xeeny.Dispatching;
 using Xeeny.Messaging;
 using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Connections
 {
@@ -22,7 +24,6 @@ namespace Xeeny.Connections
         protected override async void OnRequestReceived(ITransport transport, Message message)
         {
             var instanceContext = _instanceContextFactory.CreateInstanceContext(this);
-
             await instanceContext.HandleRequest(message, null);
         }
     }

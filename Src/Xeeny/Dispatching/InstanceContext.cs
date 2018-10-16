@@ -8,7 +8,7 @@ using Xeeny.Descriptions;
 using Xeeny.Messaging;
 using Xeeny.Connections;
 using Microsoft.Extensions.Logging;
-using Xeeny.Transports;
+using Xeeny.Transports.Messages;
 
 namespace Xeeny.Dispatching
 {
