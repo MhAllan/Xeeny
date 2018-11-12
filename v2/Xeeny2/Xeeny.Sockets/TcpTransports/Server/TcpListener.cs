@@ -9,7 +9,7 @@ using SNS = System.Net.Sockets;
 
 namespace Xeeny.Sockets.TcpTransports.Server
 {
-    public class TcpListener : IListener
+    class TcpListener : IListener
     {
         public SNS.TcpListener Listener { get; private set; }
 

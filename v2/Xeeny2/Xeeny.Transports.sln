@@ -17,9 +17,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny", "..\..\Src\Xeeny\Xe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{3CB67B69-1201-4BD2-8598-B84C8A21D3DF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.ChatExample", "Samples\Xeeny.ChatExample\Xeeny.ChatExample.csproj", "{D8B82C10-6E2F-4DBA-88B0-29A172410569}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.ChatExample", "Samples\Xeeny.ChatExample\Xeeny.ChatExample.csproj", "{D8B82C10-6E2F-4DBA-88B0-29A172410569}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.Loggers", "Xeeny.Loggers\Xeeny.Loggers.csproj", "{2DB320EA-7868-4C8F-B7E2-88A7C38F62F0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Xeeny.Loggers", "Xeeny.Loggers\Xeeny.Loggers.csproj", "{2DB320EA-7868-4C8F-B7E2-88A7C38F62F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xeeny.Serialization", "Xeeny.Serialization\Xeeny.Serialization.csproj", "{3FB2B76A-5FC9-4E4F-93EE-74ED1E4EE772}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{2DB320EA-7868-4C8F-B7E2-88A7C38F62F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DB320EA-7868-4C8F-B7E2-88A7C38F62F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2DB320EA-7868-4C8F-B7E2-88A7C38F62F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3FB2B76A-5FC9-4E4F-93EE-74ED1E4EE772}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FB2B76A-5FC9-4E4F-93EE-74ED1E4EE772}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FB2B76A-5FC9-4E4F-93EE-74ED1E4EE772}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FB2B76A-5FC9-4E4F-93EE-74ED1E4EE772}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

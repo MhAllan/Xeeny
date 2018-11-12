@@ -11,25 +11,25 @@ namespace Xeeny.Transports.Channels
     {
         public override string ConnectionId
         {
-            get => _next.ConnectionId;
-            internal set => _next.ConnectionId = value;
+            get => NextChannel.ConnectionId;
+            internal set => NextChannel.ConnectionId = value;
         }
         public override string ConnectionName
         {
-            get => _next.ConnectionName;
-            internal set => _next.ConnectionName = value;
+            get => NextChannel.ConnectionName;
+            internal set => NextChannel.ConnectionName = value;
         }
         public override ILoggerFactory LoggerFactory
         {
-            get => _next.LoggerFactory;
-            internal set => _next.LoggerFactory = value;
+            get => NextChannel.LoggerFactory;
+            internal set => NextChannel.LoggerFactory = value;
         }
 
-        readonly TransportChannel _next;
+        protected TransportChannel NextChannel;
 
-        public PipelineTransportChannel(TransportChannel next) : base(next.ConnectionSide)
+        public PipelineTransportChannel(TransportChannel nextChannel) : base(nextChannel.ConnectionSide)
         {
-            _next = next;
+            NextChannel = nextChannel;
         }
 
         public override async Task Connect(CancellationToken ct)
@@ -54,35 +54,35 @@ namespace Xeeny.Transports.Channels
 
         protected async Task NextConnect(CancellationToken ct)
         {
-            if (_next != null)
+            if (NextChannel != null)
             {
-                await _next.Connect(ct);
+                await NextChannel.Connect(ct);
             }
         }
 
         protected async Task NextSend(ArraySegment<byte> data, CancellationToken ct)
         {
-            if (_next != null)
+            if (NextChannel != null)
             {
-                await _next.Send(data, ct);
+                await NextChannel.Send(data, ct);
             }
         }
 
         protected async Task<int> NextReceive(ArraySegment<byte> buffer, CancellationToken ct)
         {
-            if (_next == null)
+            if (NextChannel == null)
             {
                 return 0;
             }
 
-            return await _next.Receive(buffer, ct);
+            return await NextChannel.Receive(buffer, ct);
         }
 
         protected async Task NextClose(CancellationToken ct)
         {
-            if (_next != null)
+            if (NextChannel != null)
             {
-                await _next.Close(ct);
+                await NextChannel.Close(ct);
             }
         }
     }

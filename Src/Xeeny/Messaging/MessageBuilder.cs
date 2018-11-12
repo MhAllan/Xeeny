@@ -127,10 +127,10 @@ namespace Xeeny.Messaging
                         if (p is byte[])
                             array[i] = (byte[])p;
                         else
-                            array[i] = _serializer.Serialize(p);
+                            array[i] = _serializer.SerializeToArray(p);
                     }
 
-                    result = _serializer.Serialize(array);
+                    result = _serializer.SerializeToArray(array);
                 }
             }
 

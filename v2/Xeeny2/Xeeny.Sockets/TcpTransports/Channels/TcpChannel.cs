@@ -12,14 +12,15 @@ namespace Xeeny.Sockets.TcpTransports.Channels
 {
     class TcpChannel : TransportChannel
     {
-        readonly Socket _socket;
+        internal Socket Socket { get; }
+
         readonly IPAddress _remoteIP;
         readonly int _remotePort;
         readonly SocketFlags _flags;
 
         public TcpChannel(Socket socket, TcpSocketSettings settings) : base(ConnectionSide.Server)
         {
-            _socket = socket;
+            Socket = socket;
             _flags = settings.SocketFlags;
         }
 
@@ -27,7 +28,7 @@ namespace Xeeny.Sockets.TcpTransports.Channels
         {
             _remoteIP = settings.IP;
             _remotePort = settings.Port;
-            _socket = socket;
+            Socket = socket;
             _flags = settings.SocketFlags;
         }
 
@@ -35,7 +36,7 @@ namespace Xeeny.Sockets.TcpTransports.Channels
         {
             if (ConnectionSide == ConnectionSide.Client)
             {
-                await _socket.ConnectAsync(_remoteIP, _remotePort)
+                await Socket.ConnectAsync(_remoteIP, _remotePort)
                          .ConfigureAwait(false);
             }
         }
@@ -44,14 +45,14 @@ namespace Xeeny.Sockets.TcpTransports.Channels
         {
             if (data.Count > 0)
             {
-                await _socket.SendAsync(data, _flags)
+                await Socket.SendAsync(data, _flags)
                             .ConfigureAwait(false);
             }
         }
 
         public override async Task<int> Receive(ArraySegment<byte> buffer, CancellationToken ct)
         {
-            return await _socket.ReceiveAsync(buffer, _flags)
+            return await Socket.ReceiveAsync(buffer, _flags)
                             .ConfigureAwait(false);
         }
 
@@ -59,13 +60,13 @@ namespace Xeeny.Sockets.TcpTransports.Channels
         {
             try
             {
-                _socket.Shutdown(SocketShutdown.Both);
-                _socket.Disconnect(false);
-                _socket.Close();
+                Socket.Shutdown(SocketShutdown.Both);
+                Socket.Disconnect(false);
+                Socket.Close();
             }
             finally
             {
-                _socket.Dispose();
+                Socket.Dispose();
             }
             return Task.CompletedTask;
         }
